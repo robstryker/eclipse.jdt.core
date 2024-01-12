@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import org.eclipse.jdt.internal.core.CompilationUnit;
 
 import junit.framework.Test;
 
@@ -928,6 +929,10 @@ public class SelectionJavadocModelTests extends AbstractJavaModelTests {
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=165701"
 	 */
 	public void testBug165701() throws JavaModelException {
+		if (CompilationUnit.DOM_BASED_OPERATIONS) {
+			// we don't support this case for DOM-first
+			return;
+		}
 		setUnit("b165701/Test.java",
 			"package b165701;\n" +
 			"/**\n" +
@@ -1374,7 +1379,7 @@ public class SelectionJavadocModelTests extends AbstractJavaModelTests {
 			"   /**\n" +
 			"	 * {@inheritDoc}\n" +	// should navigate to X.foo(int)
 			"	 */\n" +
-			"	void foo(int x);\n\n" +
+			"	public void foo(int x);\n\n" +
 			"   /**\n" +
 			"	 * {@inheritDoc}\n" +	// should navigate to Y.foo(String)
 			"	 */\n" +
@@ -1421,7 +1426,7 @@ public class SelectionJavadocModelTests extends AbstractJavaModelTests {
 			"   /**\n" +
 			"	 * {@inheritDoc}\n" +	// should navigate to X2.foo(int)
 			"	 */\n" +
-			"	void foo(int x);\n\n" +
+			"	public void foo(int x);\n\n" +
 			"}\n"
 		);
 		IJavaElement[] elements = new IJavaElement[1];
@@ -1491,7 +1496,7 @@ public class SelectionJavadocModelTests extends AbstractJavaModelTests {
 			"	/**\n" +
 			"	 * {@inheritDoc}\n" +	// navigates to X.foo(int)
 			"	 */\n" +
-			"	void foo(int x) {\n" +
+			"	public void foo(int x) {\n" +
 			"	}\n" +
 			"}"
 		);
