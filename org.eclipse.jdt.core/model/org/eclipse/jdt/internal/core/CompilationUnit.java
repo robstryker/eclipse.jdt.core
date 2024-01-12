@@ -19,11 +19,27 @@ package org.eclipse.jdt.internal.core;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
 import org.eclipse.core.resources.*;
 import org.eclipse.core.runtime.*;
 import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.compiler.*;
 import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.MethodReference;
+import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.NodeFinder;
+import org.eclipse.jdt.core.dom.ParameterizedType;
+import org.eclipse.jdt.core.dom.SimpleType;
+import org.eclipse.jdt.core.dom.Type;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.internal.compiler.IProblemFactory;
 import org.eclipse.jdt.internal.compiler.SourceElementParser;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
@@ -46,10 +62,22 @@ import org.eclipse.text.edits.UndoEdit;
  * @see ICompilationUnit
  */
 public class CompilationUnit extends Openable implements ICompilationUnit, org.eclipse.jdt.internal.compiler.env.ICompilationUnit, SuffixConstants {
+	/**
+	 * Internal synonym for deprecated constant AST.JSL2
+	 * to alleviate deprecation warnings.
+	 * @deprecated
+	 */
+	/*package*/ static final int JLS2_INTERNAL = AST.JLS2;
+
+	public static boolean DOM_BASED_OPERATIONS = Boolean.getBoolean(CompilationUnit.class.getSimpleName() + ".DOM_BASED_OPERATIONS"); //$NON-NLS-1$
+	public static boolean DOM_BASED_COMPLETION = Boolean.getBoolean(CompilationUnit.class.getSimpleName() + ".codeComplete.DOM_BASED_OPERATIONS"); //$NON-NLS-1$
+
 	private static final IImportDeclaration[] NO_IMPORTS = new IImportDeclaration[0];
 
 	protected final String name;
 	public final WorkingCopyOwner owner;
+
+	private org.eclipse.jdt.core.dom.CompilationUnit ast;
 
 /**
  * Constructs a handle to a compilation unit with the given name in the
@@ -101,104 +129,132 @@ public void becomeWorkingCopy(IProgressMonitor monitor) throws JavaModelExceptio
 protected boolean buildStructure(OpenableElementInfo info, final IProgressMonitor pm, Map<IJavaElement, IElementInfo> newElements, IResource underlyingResource) throws JavaModelException {
 	CompilationUnitElementInfo unitInfo = (CompilationUnitElementInfo) info;
 
-	// ensure buffer is opened
-	IBuffer buffer = getBufferManager().getBuffer(CompilationUnit.this);
-	if (buffer == null) {
-		openBuffer(pm, unitInfo); // open buffer independently from the info, since we are building the info
-	}
-
 	// generate structure and compute syntax problems if needed
-	CompilationUnitStructureRequestor requestor = new CompilationUnitStructureRequestor(this, unitInfo, newElements);
 	JavaModelManager.PerWorkingCopyInfo perWorkingCopyInfo = getPerWorkingCopyInfo();
 	IJavaProject project = getJavaProject();
-
-	boolean createAST;
-	boolean resolveBindings;
-	int reconcileFlags;
-	Map<String, CategorizedProblem[]> problems;
-	if (info instanceof ASTHolderCUInfo) {
-		ASTHolderCUInfo astHolder = (ASTHolderCUInfo) info;
-		createAST = astHolder.astLevel != NO_AST;
-		resolveBindings = astHolder.resolveBindings;
-		reconcileFlags = astHolder.reconcileFlags;
-		problems = astHolder.problems;
-	} else {
-		createAST = false;
-		resolveBindings = false;
-		reconcileFlags = 0;
-		problems = null;
-	}
-
+	boolean createAST = info instanceof ASTHolderCUInfo astHolder ? astHolder.astLevel != NO_AST : false;
+	boolean resolveBindings = info instanceof ASTHolderCUInfo astHolder ? astHolder.resolveBindings : false;
+	int reconcileFlags = info instanceof ASTHolderCUInfo astHolder ? astHolder.reconcileFlags : 0;
 	boolean computeProblems = perWorkingCopyInfo != null && perWorkingCopyInfo.isActive() && project != null && JavaProject.hasJavaNature(project.getProject());
-	IProblemFactory problemFactory = new DefaultProblemFactory();
 	Map<String, String> options = this.getOptions(true);
 	if (!computeProblems) {
 		// disable task tags checking to speed up parsing
 		options.put(JavaCore.COMPILER_TASK_TAGS, ""); //$NON-NLS-1$
 	}
-	CompilerOptions compilerOptions = new CompilerOptions(options);
-	compilerOptions.ignoreMethodBodies = (reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) != 0;
-	SourceElementParser parser = new SourceElementParser(
-		requestor,
-		problemFactory,
-		compilerOptions,
-		true/*report local declarations*/,
-		!createAST /*optimize string literals only if not creating a DOM AST*/);
-	parser.reportOnlyOneSyntaxError = !computeProblems;
-	parser.setMethodsFullRecovery(true);
-	parser.setStatementsRecovery((reconcileFlags & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0);
-
-	if (!computeProblems && !resolveBindings && !createAST) // disable javadoc parsing if not computing problems, not resolving and not creating ast
-		parser.javadocParser.checkDocComment = false;
-	requestor.parser = parser;
 
 	// update timestamp (might be IResource.NULL_STAMP if original does not exist)
 	if (underlyingResource == null) {
 		underlyingResource = getResource();
 	}
 	// underlying resource is null in the case of a working copy on a class file in a jar
-	if (underlyingResource != null)
+	if (underlyingResource != null) {
 		unitInfo.timestamp = ((IFile)underlyingResource).getModificationStamp();
+	}
 
-	// compute other problems if needed
-	CompilationUnitDeclaration compilationUnitDeclaration = null;
+	// ensure buffer is opened
+	IBuffer buffer = getBufferManager().getBuffer(CompilationUnit.this);
+	if (buffer == null) {
+		openBuffer(pm, unitInfo); // open buffer independently from the info, since we are building the info
+	}
+
 	CompilationUnit source = cloneCachingContents();
-	try {
-		if (computeProblems) {
-			if (problems == null) {
-				// report problems to the problem requestor
-				problems = new HashMap<>();
-				compilationUnitDeclaration = CompilationUnitProblemFinder.process(source, parser, this.owner, problems, createAST, reconcileFlags, pm);
-				try {
-					perWorkingCopyInfo.beginReporting();
-					for (Iterator<CategorizedProblem[]> iteraror = problems.values().iterator(); iteraror.hasNext();) {
-						CategorizedProblem[] categorizedProblems = iteraror.next();
-						if (categorizedProblems == null) continue;
-						for (int i = 0, length = categorizedProblems.length; i < length; i++) {
-							perWorkingCopyInfo.acceptProblem(categorizedProblems[i]);
+	Map<String, CategorizedProblem[]> problems = info instanceof ASTHolderCUInfo astHolder ? astHolder.problems : null;
+	if (DOM_BASED_OPERATIONS) {
+		ASTParser astParser = ASTParser.newParser(info instanceof ASTHolderCUInfo astHolder && astHolder.astLevel > 0 ? astHolder.astLevel : AST.getJLSLatest());
+		astParser.setWorkingCopyOwner(getOwner());
+		astParser.setSource(this instanceof ClassFileWorkingCopy ? source : this);
+		astParser.setProject(getJavaProject());
+		astParser.setStatementsRecovery((reconcileFlags & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0);
+		astParser.setResolveBindings(computeProblems || resolveBindings);
+		astParser.setBindingsRecovery((reconcileFlags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0);
+		astParser.setIgnoreMethodBodies((reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) != 0);
+		astParser.setCompilerOptions(options);
+		if (astParser.createAST(pm) instanceof org.eclipse.jdt.core.dom.CompilationUnit newAST) {
+			if (computeProblems) {
+				if (perWorkingCopyInfo != null && problems == null) {
+					try {
+						perWorkingCopyInfo.beginReporting();
+						for (IProblem problem : newAST.getProblems()) {
+							perWorkingCopyInfo.acceptProblem(problem);
 						}
+					} finally {
+						perWorkingCopyInfo.endReporting();
 					}
-				} finally {
-					perWorkingCopyInfo.endReporting();
+				} else if (newAST.getProblems().length > 0) {
+					problems.put(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, Stream.of(newAST.getProblems()).filter(CategorizedProblem.class::isInstance)
+						.map(CategorizedProblem.class::cast)
+						.toArray(CategorizedProblem[]::new));
+				}
+			}
+			if (info instanceof ASTHolderCUInfo astHolder) {
+				astHolder.ast = newAST;
+			}
+			newAST.accept(new DOMToModelPopulator(newElements, this, unitInfo));
+			// unitInfo.setModule();
+			// unitInfo.setSourceLength(newSourceLength);
+			boolean structureKnown = true;
+			for (IProblem problem : newAST.getProblems()) {
+				structureKnown &= (IProblem.Syntax & problem.getID()) == 0;
+			}
+			unitInfo.setIsStructureKnown(structureKnown);
+		}
+	} else {
+		CompilerOptions compilerOptions = new CompilerOptions(options);
+		compilerOptions.ignoreMethodBodies = (reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) != 0;
+		CompilationUnitStructureRequestor requestor = new CompilationUnitStructureRequestor(this, unitInfo, newElements);
+		IProblemFactory problemFactory = new DefaultProblemFactory();
+		SourceElementParser parser = new SourceElementParser(
+			requestor,
+			problemFactory,
+			compilerOptions,
+			true/*report local declarations*/,
+			!createAST /*optimize string literals only if not creating a DOM AST*/);
+		parser.reportOnlyOneSyntaxError = !computeProblems;
+		parser.setMethodsFullRecovery(true);
+		parser.setStatementsRecovery((reconcileFlags & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0);
+
+		if (!computeProblems && !resolveBindings && !createAST) // disable javadoc parsing if not computing problems, not resolving and not creating ast
+			parser.javadocParser.checkDocComment = false;
+		requestor.parser = parser;
+
+		// compute other problems if needed
+		CompilationUnitDeclaration compilationUnitDeclaration = null;
+		try {
+			if (computeProblems) {
+				if (problems == null) {
+					// report problems to the problem requestor
+					problems = new HashMap<>();
+					compilationUnitDeclaration = CompilationUnitProblemFinder.process(source, parser, this.owner, problems, createAST, reconcileFlags, pm);
+					try {
+						perWorkingCopyInfo.beginReporting();
+						for (CategorizedProblem[] categorizedProblems : problems.values()) {
+							if (categorizedProblems == null) continue;
+							for (CategorizedProblem categorizedProblem : categorizedProblems) {
+								perWorkingCopyInfo.acceptProblem(categorizedProblem);
+							}
+						}
+					} finally {
+						perWorkingCopyInfo.endReporting();
+					}
+				} else {
+					// collect problems
+					compilationUnitDeclaration = CompilationUnitProblemFinder.process(source, parser, this.owner, problems, createAST, reconcileFlags, pm);
 				}
 			} else {
-				// collect problems
-				compilationUnitDeclaration = CompilationUnitProblemFinder.process(source, parser, this.owner, problems, createAST, reconcileFlags, pm);
+				compilationUnitDeclaration = parser.parseCompilationUnit(source, true /*full parse to find local elements*/, pm);
 			}
-		} else {
-			compilationUnitDeclaration = parser.parseCompilationUnit(source, true /*full parse to find local elements*/, pm);
-		}
 
-		if (createAST) {
-			int astLevel = ((ASTHolderCUInfo) info).astLevel;
-			org.eclipse.jdt.core.dom.CompilationUnit cu = AST.convertCompilationUnit(astLevel, compilationUnitDeclaration, options, computeProblems, source, reconcileFlags, pm);
-			((ASTHolderCUInfo) info).ast = cu;
+			if (createAST) {
+				int astLevel = ((ASTHolderCUInfo) info).astLevel;
+				org.eclipse.jdt.core.dom.CompilationUnit cu = AST.convertCompilationUnit(astLevel, compilationUnitDeclaration, options, computeProblems, source, reconcileFlags, pm);
+				((ASTHolderCUInfo) info).ast = cu;
+			}
+		} finally {
+		    if (compilationUnitDeclaration != null) {
+		    	unitInfo.hasFunctionalTypes = compilationUnitDeclaration.hasFunctionalTypes();
+		        compilationUnitDeclaration.cleanUp();
+		    }
 		}
-	} finally {
-	    if (compilationUnitDeclaration != null) {
-	    	unitInfo.hasFunctionalTypes = compilationUnitDeclaration.hasFunctionalTypes();
-	        compilationUnitDeclaration.cleanUp();
-	    }
 	}
 
 	return unitInfo.isStructureKnown();
@@ -357,6 +413,10 @@ public void codeComplete(int offset, CompletionRequestor requestor, WorkingCopyO
 
 @Override
 public void codeComplete(int offset, CompletionRequestor requestor, WorkingCopyOwner workingCopyOwner, IProgressMonitor monitor) throws JavaModelException {
+	if (DOM_BASED_COMPLETION) {
+		new DOMCompletionEngine(offset, getOrBuildAST(workingCopyOwner), requestor, monitor).run();
+		return;
+	}
 	codeComplete(
 			this,
 			isWorkingCopy() ? (org.eclipse.jdt.internal.compiler.env.ICompilationUnit) getOriginalElement() : this,
@@ -379,8 +439,93 @@ public IJavaElement[] codeSelect(int offset, int length) throws JavaModelExcepti
  */
 @Override
 public IJavaElement[] codeSelect(int offset, int length, WorkingCopyOwner workingCopyOwner) throws JavaModelException {
-	return super.codeSelect(this, offset, length, workingCopyOwner);
+	if (DOM_BASED_OPERATIONS) {
+		org.eclipse.jdt.core.dom.CompilationUnit currentAST = getOrBuildAST(workingCopyOwner);
+		if (currentAST == null) {
+			return new IJavaElement[0];
+		}
+		NodeFinder finder = new NodeFinder(currentAST, offset, length);
+		ASTNode node = finder.getCoveredNode() != null ? finder.getCoveredNode() : finder.getCoveringNode();
+		IBinding binding = resolveBinding(node);
+		if (binding != null) {
+			return new IJavaElement[] { binding.getJavaElement() };
+		}
+		return new IJavaElement[0];
+	} else {
+		return super.codeSelect(this, offset, length, workingCopyOwner);
+	}
 }
+static IBinding resolveBinding(ASTNode node) {
+	if (node instanceof MethodDeclaration decl) {
+		return decl.resolveBinding();
+	}
+	if (node instanceof MethodInvocation invocation) {
+		return invocation.resolveMethodBinding();
+	}
+	if (node instanceof VariableDeclaration decl) {
+		return decl.resolveBinding();
+	}
+	if (node instanceof FieldAccess access) {
+		return access.resolveFieldBinding();
+	}
+	if (node instanceof Type type) {
+		return type.resolveBinding();
+	}
+	if (node instanceof Name aName) {
+		ClassInstanceCreation newInstance = findConstructor(aName);
+		if (newInstance != null) {
+			return newInstance.resolveConstructorBinding();
+		}
+		IBinding res = aName.resolveBinding();
+		if (res != null) {
+			return res;
+		}
+		return resolveBinding(aName.getParent());
+	}
+	if (node instanceof org.eclipse.jdt.core.dom.LambdaExpression lambda) {
+		return lambda.resolveMethodBinding();
+	}
+	if (node instanceof MethodReference methodRef) {
+		return methodRef.resolveMethodBinding();
+	}
+	if (node instanceof org.eclipse.jdt.core.dom.TypeParameter typeParameter) {
+		return typeParameter.resolveBinding();
+	}
+	return null;
+}
+
+
+private static ClassInstanceCreation findConstructor(ASTNode node) {
+	while (node != null && !(node instanceof ClassInstanceCreation)) {
+		ASTNode parent = node.getParent();
+		if ((parent instanceof SimpleType type && type.getName() == node) ||
+			(parent instanceof ClassInstanceCreation constructor && constructor.getType() == node) ||
+			(parent instanceof ParameterizedType parameterized && parameterized.getType() == node)) {
+			node = parent;
+		} else {
+			node = null;
+		}
+	}
+	return (ClassInstanceCreation)node;
+}
+
+
+private org.eclipse.jdt.core.dom.CompilationUnit getOrBuildAST(WorkingCopyOwner workingCopyOwner) {
+	if (this.ast == null) {
+		ASTParser parser = ASTParser.newParser(AST.getJLSLatest()); // TODO use Java project info
+		parser.setSource(this);
+		// greedily enable everything assuming the AST will be used extensively for edition
+		parser.setResolveBindings(true);
+		parser.setStatementsRecovery(true);
+		parser.setBindingsRecovery(true);
+		if (parser.createAST(null) instanceof org.eclipse.jdt.core.dom.CompilationUnit newAST) {
+			this.ast = newAST;
+		}
+	}
+	return this.ast;
+}
+
+
 /**
  * @see IWorkingCopy#commit(boolean, IProgressMonitor)
  * @deprecated
@@ -1137,7 +1282,7 @@ public org.eclipse.jdt.core.dom.CompilationUnit makeConsistent(int astLevel, boo
 			openWhenClosed(info, true, monitor);
 			org.eclipse.jdt.core.dom.CompilationUnit result = info.ast;
 			info.ast = null;
-			return result;
+			return astLevel != NO_AST ? result : null;
 		} else {
 			openWhenClosed(createElementInfo(), true, monitor);
 			return null;
