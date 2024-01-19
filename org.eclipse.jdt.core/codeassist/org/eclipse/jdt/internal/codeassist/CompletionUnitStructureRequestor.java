@@ -27,6 +27,7 @@ import org.eclipse.jdt.internal.codeassist.complete.CompletionOnQualifiedNameRef
 import org.eclipse.jdt.internal.codeassist.complete.CompletionOnQualifiedTypeReference;
 import org.eclipse.jdt.internal.codeassist.complete.CompletionOnSingleNameReference;
 import org.eclipse.jdt.internal.codeassist.complete.CompletionOnSingleTypeReference;
+import org.eclipse.jdt.internal.codeassist.complete.ICompletionParserFacade;
 import org.eclipse.jdt.internal.codeassist.impl.AssistAnnotation;
 import org.eclipse.jdt.internal.codeassist.impl.AssistImportContainer;
 import org.eclipse.jdt.internal.codeassist.impl.AssistImportDeclaration;
@@ -45,7 +46,6 @@ import org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.parser.Parser;
 import org.eclipse.jdt.internal.core.AnnotatableInfo;
 import org.eclipse.jdt.internal.core.Annotation;
 import org.eclipse.jdt.internal.core.CompilationUnit;
@@ -72,7 +72,7 @@ public class CompletionUnitStructureRequestor extends CompilationUnitStructureRe
 	public CompletionUnitStructureRequestor(
 			ICompilationUnit unit,
 			CompilationUnitElementInfo unitInfo,
-			Parser parser,
+			ICompletionParserFacade parser,
 			ASTNode assistNode,
 			Map<JavaElement, Binding> bindingCache,
 			Map<Binding, JavaElement> elementCache,

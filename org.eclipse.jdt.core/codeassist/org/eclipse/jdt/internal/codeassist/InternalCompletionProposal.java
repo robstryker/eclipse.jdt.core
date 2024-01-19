@@ -46,7 +46,7 @@ import org.eclipse.jdt.internal.core.SourceMapper;
 public class InternalCompletionProposal extends CompletionProposal {
 	private static Object NO_ATTACHED_SOURCE = new Object();
 
-	protected CompletionEngine completionEngine;
+	protected ICompletionEngine completionEngine;
 	protected NameLookup nameLookup;
 
 	protected char[] declarationPackageName;
@@ -217,7 +217,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 		int length = paramTypeNames.length;
 
 		char[] tName = CharOperation.concat(declaringTypePackageName,declaringTypeName,'.');
-		Object cachedType = this.completionEngine.typeCache.get(tName);
+		Object cachedType = this.completionEngine.getTypeCache().get(tName);
 
 		IType type = null;
 		if(cachedType != null) {
@@ -236,7 +236,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 				null);
 			type = answer == null ? null : answer.type;
 			if(type instanceof BinaryType){
-				this.completionEngine.typeCache.put(tName, type);
+				this.completionEngine.getTypeCache().put(tName, type);
 			} else {
 				type = null;
 			}
@@ -252,14 +252,16 @@ public class InternalCompletionProposal extends CompletionProposal {
 
 					IPackageFragmentRoot packageFragmentRoot = (IPackageFragmentRoot)type.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
 					if (packageFragmentRoot.isArchive() ||
-							this.completionEngine.openedBinaryTypes < getOpenedBinaryTypesThreshold()) {
+							this.completionEngine.getOpenedBinaryTypes() < getOpenedBinaryTypesThreshold()) {
 						SourceMapper mapper = ((JavaElement)method).getSourceMapper();
 						if (mapper != null) {
 							char[][] paramNames = mapper.getMethodParameterNames(method);
 
 							// map source and try to find parameter names
 							if(paramNames == null) {
-								if (!packageFragmentRoot.isArchive()) this.completionEngine.openedBinaryTypes++;
+								if (!packageFragmentRoot.isArchive()) {
+									this.completionEngine.incrementOpenedBinaryTypes();
+								}
 								IBinaryType info = ((BinaryType) type).getElementInfo();
 								char[] source = mapper.findSource(type, info);
 								if (source != null){
@@ -307,7 +309,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 		int length = paramTypeNames.length;
 
 		char[] tName = CharOperation.concat(declaringTypePackageName,declaringTypeName,'.');
-		Object cachedType = this.completionEngine.typeCache.get(tName);
+		Object cachedType = this.completionEngine.getTypeCache().get(tName);
 
 		IType type = null;
 		if(cachedType != null) {
@@ -326,7 +328,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 				null);
 			type = answer == null ? null : answer.type;
 			if(type instanceof BinaryType){
-				this.completionEngine.typeCache.put(tName, type);
+				this.completionEngine.getTypeCache().put(tName, type);
 			} else {
 				type = null;
 			}

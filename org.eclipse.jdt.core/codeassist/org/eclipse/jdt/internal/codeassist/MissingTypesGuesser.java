@@ -33,7 +33,7 @@ import org.eclipse.jdt.internal.compiler.util.HashtableOfObjectToInt;
 import org.eclipse.jdt.internal.core.SearchableEnvironment;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-public class MissingTypesGuesser extends ASTVisitor {
+public class MissingTypesGuesser extends ASTVisitor implements IMissingTypesGuesser {
 	public static interface GuessedTypeRequestor {
 		public void accept(
 				TypeBinding guessedType,
@@ -535,6 +535,7 @@ public class MissingTypesGuesser extends ASTVisitor {
 		return (char[][][])this.substituedTypes.get(typeRef);
 	}
 
+	@Override
 	public void guess(TypeReference typeRef, Scope scope, GuessedTypeRequestor requestor) {
 		this.substituedTypes = new HashMap();
 		this.originalTypes = new HashMap();

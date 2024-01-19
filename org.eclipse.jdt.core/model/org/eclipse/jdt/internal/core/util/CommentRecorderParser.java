@@ -15,6 +15,7 @@ package org.eclipse.jdt.internal.core.util;
 
 import java.util.Arrays;
 
+import org.eclipse.jdt.internal.codeassist.complete.IScannerProvider;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -28,7 +29,7 @@ import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
  *
  * @since 3.0
  */
-public class CommentRecorderParser extends Parser {
+public class CommentRecorderParser extends Parser implements IScannerProvider {
 
 	// support for comments
 	int[] commentStops = new int[10];
@@ -319,5 +320,10 @@ public class CommentRecorderParser extends Parser {
 		Arrays.fill(this.scanner.commentTagStarts, 0);
 		this.scanner.commentPtr = -1; // no comment test with commentPtr value -1
 		this.scanner.lastCommentLinePosition = -1;
+	}
+
+	@Override
+	public Scanner getScanner() {
+		return this.scanner;
 	}
 }

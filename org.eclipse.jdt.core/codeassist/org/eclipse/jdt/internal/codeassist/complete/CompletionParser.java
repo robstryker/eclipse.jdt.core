@@ -135,7 +135,7 @@ import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfObjectToInt;
 import org.eclipse.jdt.internal.compiler.util.Util;
 
-public class CompletionParser extends AssistParser {
+public class CompletionParser extends AssistParser implements ICompletionParserFacade {
 	// OWNER
 	protected static final int COMPLETION_PARSER = 1024;
 	protected static final int COMPLETION_OR_ASSIST_PARSER = ASSIST_PARSER + COMPLETION_PARSER;
@@ -6452,5 +6452,35 @@ protected boolean isInModuleStatements() {
 			isInRequiresStatement() ||
 			isInProvidesStatement() ||
 			isInUsesStatement();
+}
+@Override
+public HashtableOfObjectToInt getSourceEnds() {
+	// TODO Auto-generated method stub
+	return null;
+}
+@Override
+public Scanner getScanner() {
+	return this.scanner;
+}
+@Override
+public CompilationUnitDeclaration parseCompilationUnitDeclaration(ICompilationUnit sourceUnit, CompilationResult result,
+		int actualCompletionPosition2) {
+	return this.dietParse(sourceUnit, result, actualCompletionPosition2);
+}
+@Override
+public ASTNode getEnclosingNode() {
+	return this.enclosingNode;
+}
+@Override
+public ASTNode getAssistNodeParent() {
+	return this.assistNodeParent;
+}
+@Override
+public ASTNode getAssistNode() {
+	return this.assistNode;
+}
+@Override
+public void setEnclosingNode(ASTNode enclosing) {
+	this.enclosingNode = enclosing;
 }
 }

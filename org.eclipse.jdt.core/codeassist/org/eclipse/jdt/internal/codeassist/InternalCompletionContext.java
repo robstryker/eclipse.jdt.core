@@ -18,7 +18,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.internal.codeassist.complete.CompletionOnJavadoc;
-import org.eclipse.jdt.internal.codeassist.complete.CompletionParser;
+import org.eclipse.jdt.internal.codeassist.complete.ICompletionParserFacade;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
@@ -68,7 +68,7 @@ public class InternalCompletionContext extends CompletionContext {
 			ASTNode astNode,
 			ASTNode astNodeParent,
 			WorkingCopyOwner owner,
-			CompletionParser parser) {
+			ICompletionParserFacade parser) {
 		this.isExtended = true;
 		this.extendedContext =
 			new InternalExtendedCompletionContext(

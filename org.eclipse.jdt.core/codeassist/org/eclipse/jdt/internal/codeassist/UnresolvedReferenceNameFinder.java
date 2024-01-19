@@ -35,7 +35,7 @@ import org.eclipse.jdt.internal.compiler.lookup.Scope;
 import org.eclipse.jdt.internal.compiler.util.SimpleSetOfCharArray;
 import org.eclipse.jdt.internal.compiler.util.Util;
 
-public class UnresolvedReferenceNameFinder extends ASTVisitor {
+public class UnresolvedReferenceNameFinder extends ASTVisitor implements IUnresolvedReferenceNameFinder {
 	private static final int MAX_LINE_COUNT = 100;
 	private static final int FAKE_BLOCKS_COUNT = 20;
 
@@ -58,10 +58,10 @@ public class UnresolvedReferenceNameFinder extends ASTVisitor {
 
 	private final SimpleSetOfCharArray acceptedNames = new SimpleSetOfCharArray();
 
-	public UnresolvedReferenceNameFinder(CompletionEngine completionEngine) {
+	public UnresolvedReferenceNameFinder(CompletionEngine completionEngine, CompletionParser completionParser) {
 		this.completionEngine = completionEngine;
-		this.parser = completionEngine.parser;
-		this.completionScanner = (CompletionScanner) this.parser.scanner;
+		this.parser = completionParser;
+		this.completionScanner = (CompletionScanner) this.parser.getScanner();
 	}
 
 	private void acceptName(char[] name) {
@@ -79,6 +79,7 @@ public class UnresolvedReferenceNameFinder extends ASTVisitor {
 		this.requestor.acceptName(name);
 	}
 
+	@Override
 	public void find(
 			char[] startWith,
 			Initializer initializer,
@@ -91,6 +92,7 @@ public class UnresolvedReferenceNameFinder extends ASTVisitor {
 		if (fakeMethod != null) fakeMethod.traverse(this, scope);
 	}
 
+	@Override
 	public void find(
 			char[] startWith,
 			AbstractMethodDeclaration methodDeclaration,
@@ -102,6 +104,7 @@ public class UnresolvedReferenceNameFinder extends ASTVisitor {
 		if (fakeMethod != null) fakeMethod.traverse(this, methodDeclaration.scope.classScope());
 	}
 
+	@Override
 	public void findAfter(
 			char[] startWith,
 			Scope scope,
@@ -169,6 +172,7 @@ public class UnresolvedReferenceNameFinder extends ASTVisitor {
 		return fakeMethod;
 	}
 
+	@Override
 	public void findBefore(
 			char[] startWith,
 			Scope scope,

@@ -33,6 +33,7 @@ import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.compiler.CategorizedProblem;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.compiler.IProblem;
+import org.eclipse.jdt.internal.codeassist.complete.IScannerProvider;
 import org.eclipse.jdt.internal.compiler.ISourceElementRequestor;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.Argument;
@@ -48,8 +49,8 @@ import org.eclipse.jdt.internal.compiler.ast.QualifiedNameReference;
 import org.eclipse.jdt.internal.compiler.ast.SingleNameReference;
 import org.eclipse.jdt.internal.compiler.ast.UnaryExpression;
 import org.eclipse.jdt.internal.compiler.env.IElementInfo;
-import org.eclipse.jdt.internal.compiler.parser.Parser;
 import org.eclipse.jdt.internal.compiler.parser.RecoveryScanner;
+import org.eclipse.jdt.internal.compiler.parser.Scanner;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfObject;
 import org.eclipse.jdt.internal.core.util.ReferenceInfoAdapter;
 import org.eclipse.jdt.internal.core.util.Util;
@@ -127,7 +128,7 @@ public class CompilationUnitStructureRequestor extends ReferenceInfoAdapter impl
 	/*
 	 * The parser this requestor is using.
 	 */
-	protected Parser parser;
+	protected IScannerProvider parser;
 
 	protected HashtableOfObject fieldRefCache;
 	protected HashtableOfObject messageRefCache;
@@ -722,7 +723,9 @@ public void exitField(int initializationStart, int declarationEnd, int declarati
 			int length = declarationEnd - initializationStart;
 			if (length > 0) {
 				char[] initializer = new char[length];
-				System.arraycopy(this.parser.scanner.source, initializationStart, initializer, 0, length);
+				char[] source = getParserScannerSource();
+				if( source.length >= initializationStart + length)
+					System.arraycopy(source, initializationStart, initializer, 0, length);
 				info.initializationSource = initializer;
 			}
 		}
@@ -730,6 +733,14 @@ public void exitField(int initializationStart, int declarationEnd, int declarati
 	if (fieldInfo.typeAnnotated) {
 		this.unitInfo.annotationNumber = CompilationUnitElementInfo.ANNOTATION_THRESHOLD_FOR_DIET_PARSE;
 	}
+}
+
+protected char[] getParserScannerSource() {
+	Scanner scanner = this.parser.getScanner();
+	if( scanner != null ) {
+		return scanner.source;
+	}
+	return new char[0];
 }
 
 /**

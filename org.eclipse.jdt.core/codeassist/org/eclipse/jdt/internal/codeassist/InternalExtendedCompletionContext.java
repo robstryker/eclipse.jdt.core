@@ -27,7 +27,7 @@ import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.codeassist.complete.CompletionNodeDetector;
-import org.eclipse.jdt.internal.codeassist.complete.CompletionParser;
+import org.eclipse.jdt.internal.codeassist.complete.ICompletionParserFacade;
 import org.eclipse.jdt.internal.codeassist.impl.AssistCompilationUnit;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
@@ -90,7 +90,7 @@ public class InternalExtendedCompletionContext {
 	private final ASTNode assistNodeParent;
 	private final WorkingCopyOwner owner;
 
-	private final CompletionParser parser;
+	private final ICompletionParserFacade parser;
 
 	// computed data
 	private boolean hasComputedVisibleElementBindings;
@@ -112,7 +112,7 @@ public class InternalExtendedCompletionContext {
 			ASTNode assistNode,
 			ASTNode assistNodeParent,
 			WorkingCopyOwner owner,
-			CompletionParser parser) {
+			ICompletionParserFacade parser) {
 		this.completionContext = completionContext;
 		this.typeRoot = typeRoot;
 		this.compilationUnitDeclaration = compilationUnitDeclaration;
@@ -164,7 +164,7 @@ public class InternalExtendedCompletionContext {
 					this.compilationUnitDeclaration.sourceStart,
 					this.compilationUnitDeclaration.sourceEnd,
 					false,
-					this.parser.sourceEnds,
+					this.parser.getSourceEnds(),
 					new HashMap<>());
 
 			this.bindingsToHandles = bindingToHandle;
