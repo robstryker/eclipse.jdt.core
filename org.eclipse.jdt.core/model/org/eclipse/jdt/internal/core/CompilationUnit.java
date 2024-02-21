@@ -138,8 +138,6 @@ protected boolean buildStructure(OpenableElementInfo info, final IProgressMonito
 		// disable task tags checking to speed up parsing
 		options.put(JavaCore.COMPILER_TASK_TAGS, ""); //$NON-NLS-1$
 	}
-	CompilerOptions compilerOptions = new CompilerOptions(options);
-	compilerOptions.ignoreMethodBodies = (reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) != 0;
 
 	// update timestamp (might be IResource.NULL_STAMP if original does not exist)
 	if (underlyingResource == null) {
@@ -161,7 +159,7 @@ protected boolean buildStructure(OpenableElementInfo info, final IProgressMonito
 	if (DOM_BASED_OPERATIONS) {
 		ASTParser astParser = ASTParser.newParser(info instanceof ASTHolderCUInfo astHolder && astHolder.astLevel > 0 ? astHolder.astLevel : AST.getJLSLatest());
 		astParser.setWorkingCopyOwner(getOwner());
-		astParser.setSource(source);
+		astParser.setSource(this instanceof ClassFileWorkingCopy ? source : this);
 		astParser.setProject(getJavaProject());
 		astParser.setStatementsRecovery((reconcileFlags & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0);
 		astParser.setResolveBindings(computeProblems || resolveBindings);
@@ -198,6 +196,8 @@ protected boolean buildStructure(OpenableElementInfo info, final IProgressMonito
 			unitInfo.setIsStructureKnown(structureKnown);
 		}
 	} else {
+		CompilerOptions compilerOptions = new CompilerOptions(options);
+		compilerOptions.ignoreMethodBodies = (reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) != 0;
 		CompilationUnitStructureRequestor requestor = new CompilationUnitStructureRequestor(this, unitInfo, newElements);
 		IProblemFactory problemFactory = new DefaultProblemFactory();
 		SourceElementParser parser = new SourceElementParser(
