@@ -203,7 +203,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			IResource member = javaProject.getProject().getParent().findMember(javaProject.getOutputLocation());
 			if( member != null ) {
 				File f = member.getLocation().toFile();
-				List l = List.of(member);
+				List l = List.of(f);
 				fileManager.setLocation(StandardLocation.CLASS_OUTPUT, l);
 			}
 			fileManager.setLocation(StandardLocation.SOURCE_PATH, classpathEntriesToFiles(javaProject, entry -> entry.getEntryKind() == IClasspathEntry.CPE_SOURCE));
