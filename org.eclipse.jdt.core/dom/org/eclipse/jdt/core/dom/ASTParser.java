@@ -1247,6 +1247,7 @@ public class ASTParser {
 		}
 
 		CompilationUnit result = this.unitResolver.toCompilationUnit(sourceUnit, needToResolveBindings, this.project, getClasspath(), searcher, this.apiLevel, this.compilerOptions, this.workingCopyOwner, wcOwner, flags, monitor);
+
 		result.setTypeRoot(this.typeRoot);
 		return result;
 	}

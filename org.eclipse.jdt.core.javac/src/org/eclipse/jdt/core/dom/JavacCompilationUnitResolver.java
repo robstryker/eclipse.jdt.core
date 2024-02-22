@@ -108,6 +108,11 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		if (initialNeedsToResolveBinding) {
 			res.getPackage().resolveBinding();
 		}
+		// For comparison
+		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
+
+		String res1a = res.toString();
+		String res2a = res2.toString();
 		return res;
 	}
 
