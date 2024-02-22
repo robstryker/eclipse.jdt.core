@@ -195,7 +195,7 @@ class JavacConverter {
 
 	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl) {
 		AbstractTypeDeclaration	res = switch (javacClassDecl.getKind()) {
-			case ANNOTATED_TYPE -> this.ast.newAnnotationTypeDeclaration();
+			case ANNOTATION_TYPE -> this.ast.newAnnotationTypeDeclaration();
 			case ENUM -> this.ast.newEnumDeclaration();
 			case RECORD -> this.ast.newRecordDeclaration();
 			case INTERFACE -> {
@@ -236,6 +236,50 @@ class JavacConverter {
 //			tagElement.fragments().add(textElement);
 //			doc.tags().add(tagElement);
 //			res.setJavadoc(doc);
+		} else if (res instanceof EnumDeclaration enumDecl) {
+	        List enumStatements= enumDecl.enumConstants();
+			if (javacClassDecl.getMembers() != null) {
+				javacClassDecl.getMembers().stream()
+					.map(this::convertEnumConstantDeclaration)
+					.filter(t -> t != null)
+					.forEach(enumStatements::add);
+			}
+			
+			List bodyDecl = enumDecl.bodyDeclarations();
+			if (javacClassDecl.getMembers() != null) {
+				javacClassDecl.getMembers().stream()
+					.map(this::convertEnumFieldDeclaration)
+					.filter(t -> t != null)
+					.forEach(bodyDecl::add);
+			}
+		} else if (res instanceof AnnotationTypeDeclaration annotDecl) {
+			//setModifiers(annotationTypeMemberDeclaration2, annotationTypeMemberDeclaration);
+			final SimpleName name = new SimpleName(this.ast);
+			name.internalSetIdentifier(new String(annotDecl.typeName.toString()));
+			int start = annotDecl.getStartPosition();
+			int end = start + annotDecl.getLength();
+			name.setSourceRange(start, end - start + 1);
+			res.setName(name);
+			if( javacClassDecl.defs != null ) {
+				javacClassDecl.defs.stream().map(this::convertBodyDeclaration).filter(t -> t != null)
+				.forEach(res.bodyDeclarations::add);
+			}
+			
+//			org.eclipse.jdt.internal.compiler.ast.TypeReference typeReference = annotDecl.get
+//			if (typeReference != null) {
+//				Type returnType = convertType(typeReference);
+//				setTypeForMethodDeclaration(annotationTypeMemberDeclaration2, returnType, 0);
+//			}
+//			int declarationSourceStart = annotationTypeMemberDeclaration.declarationSourceStart;
+//			int declarationSourceEnd = annotationTypeMemberDeclaration.bodyEnd;
+//			annotationTypeMemberDeclaration2.setSourceRange(declarationSourceStart, declarationSourceEnd - declarationSourceStart + 1);
+//			// The javadoc comment is now got from list store in compilation unit declaration
+//			convert(annotationTypeMemberDeclaration.javadoc, annotationTypeMemberDeclaration2);
+//			org.eclipse.jdt.internal.compiler.ast.Expression memberValue = annotationTypeMemberDeclaration.defaultValue;
+//			if (memberValue != null) {
+//				annotationTypeMemberDeclaration2.setDefault(convert(memberValue));
+//			}
+
 		}
 		// TODO Javadoc
 		return res;
@@ -1099,6 +1143,31 @@ class JavacConverter {
 			}
 			return -1;
 		}
+	}
+
+	private EnumConstantDeclaration convertEnumConstantDeclaration(JCTree var) {
+		EnumConstantDeclaration enumConstantDeclaration = null;
+		if( var instanceof JCVariableDecl enumConstant ) {
+			if( enumConstant.getType() instanceof JCIdent) {
+				enumConstantDeclaration = new EnumConstantDeclaration(this.ast);
+				final SimpleName typeName = new SimpleName(this.ast);
+				typeName.internalSetIdentifier(enumConstant.getName().toString());
+				int start = enumConstant.getStartPosition();
+				int end = enumConstant.getEndPosition(this.javacCompilationUnit.endPositions);
+				enumConstantDeclaration.setSourceRange(start, end-start);
+				enumConstantDeclaration.setName(typeName);
+			}
+		} 
+		return enumConstantDeclaration;
+	}
+
+	private FieldDeclaration convertEnumFieldDeclaration(JCTree var) {
+		if( var instanceof JCVariableDecl field ) {
+			if( !(field.getType() instanceof JCIdent)) {
+				return convertFieldDeclaration(field);
+			}
+		}
+		return null;
 	}
 
 }

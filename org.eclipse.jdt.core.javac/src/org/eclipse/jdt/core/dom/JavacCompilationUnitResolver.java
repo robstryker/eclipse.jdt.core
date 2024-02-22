@@ -114,6 +114,11 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		if (initialNeedsToResolveBinding) {
 			res.getPackage().resolveBinding();
 		}
+		// For comparison
+		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
+
+		String res1a = res.toString();
+		String res2a = res2.toString();
 		return res;
 	}
 
@@ -195,7 +200,12 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 	private void configurePaths(JavaProject javaProject, Context context) {
 		JavacFileManager fileManager = (JavacFileManager)context.get(JavaFileManager.class);
 		try {
-			fileManager.setLocation(StandardLocation.CLASS_OUTPUT, List.of(javaProject.getProject().getParent().findMember(javaProject.getOutputLocation()).getLocation().toFile()));
+			IResource member = javaProject.getProject().getParent().findMember(javaProject.getOutputLocation());
+			if( member != null ) {
+				File f = member.getLocation().toFile();
+				List l = List.of(member);
+				fileManager.setLocation(StandardLocation.CLASS_OUTPUT, l);
+			}
 			fileManager.setLocation(StandardLocation.SOURCE_PATH, classpathEntriesToFiles(javaProject, entry -> entry.getEntryKind() == IClasspathEntry.CPE_SOURCE));
 			fileManager.setLocation(StandardLocation.CLASS_PATH, classpathEntriesToFiles(javaProject, entry -> entry.getEntryKind() != IClasspathEntry.CPE_SOURCE));
 		} catch (Exception ex) {
