@@ -44,7 +44,7 @@ public class JavacTypeBinding implements ITypeBinding {
 	public JavacTypeBinding(final TypeSymbol classSymbol, final JavacBindingResolver resolver) {
 		this.typeSymbol = classSymbol;
 		this.resolver = resolver;
-		this.types = this.resolver.context.get(Types.class);
+		this.types = Types.instance(this.resolver.context);
 	}
 
 	public JavacTypeBinding(final Type type, final JavacBindingResolver resolver) {

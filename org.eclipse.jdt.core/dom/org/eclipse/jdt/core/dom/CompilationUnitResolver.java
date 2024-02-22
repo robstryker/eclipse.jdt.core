@@ -81,10 +81,10 @@ import org.eclipse.jdt.internal.core.util.CommentRecorderParser;
 import org.eclipse.jdt.internal.core.util.DOMFinder;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-class CompilationUnitResolver extends Compiler {
-	
-	private static final class ECJCompilationUnitResolver implements ICompilationUnitResolver {
-		
+public class CompilationUnitResolver extends Compiler {
+
+	static final class ECJCompilationUnitResolver implements ICompilationUnitResolver {
+
 		@Override
 		public void resolve(String[] sourceFilePaths, String[] encodings, String[] bindingKeys,
 				FileASTRequestor requestor, int apiLevel, Map<String, String> compilerOptions, List<Classpath> classpath,
@@ -174,7 +174,7 @@ class CompilationUnitResolver extends Compiler {
 			}
 		}
 	}
-	
+
 	public static final ECJCompilationUnitResolver FACADE = new ECJCompilationUnitResolver();
 
 	public static final int RESOLVE_BINDING = 0x1;
