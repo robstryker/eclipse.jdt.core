@@ -116,7 +116,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		}
 		// For comparison
 		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
-
+		//res.typeAndFlags=res2.typeAndFlags;
 		String res1a = res.toString();
 		String res2a = res2.toString();
 		return res;
@@ -136,6 +136,10 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		options.put(Option.XLINT_CUSTOM, "all"); // TODO refine according to compilerOptions
 		// TODO populate more from compilerOptions and/or project settings
 		AST ast = createAST(compilerOptions, apiLevel, context);
+//		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
+//		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
+//		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
+		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
 		CompilationUnit res = ast.newCompilationUnit();
 		context.put(DiagnosticListener.class, new DiagnosticListener<JavaFileObject>() {
 			@Override
@@ -159,15 +163,12 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		javac.genEndPos = true;
 		javac.lineDebugInfo = true;
 		JCCompilationUnit javacCompilationUnit = javac.parse(fileObject);
-		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
-		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
 		JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context);
 		converter.populateCompilationUnit(res, javacCompilationUnit);
 		attachComments(res, context, fileObject, converter, compilerOptions);
 		ast.setBindingResolver(new JavacBindingResolver(javac, javaProject, context, converter));
 		//
 		ast.setOriginalModificationCount(ast.modificationCount()); // "un-dirty" AST so Rewrite can process it
-		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
 		return res;
 	}
 
