@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -257,13 +258,14 @@ class JavacConverter {
 			//setModifiers(annotationTypeMemberDeclaration2, annotationTypeMemberDeclaration);
 			final SimpleName name = new SimpleName(this.ast);
 			name.internalSetIdentifier(new String(annotDecl.typeName.toString()));
-			int start = annotDecl.getStartPosition();
-			int end = start + annotDecl.getLength();
-			name.setSourceRange(start, end - start + 1);
 			res.setName(name);
 			if( javacClassDecl.defs != null ) {
-				javacClassDecl.defs.stream().map(this::convertBodyDeclaration).filter(t -> t != null)
-				.forEach(res.bodyDeclarations::add);
+				for( Iterator<JCTree> i = javacClassDecl.defs.iterator(); i.hasNext(); ) {
+					ASTNode converted = convertBodyDeclaration(i.next(), res);
+					if( converted != null ) {
+						res.bodyDeclarations.add(converted);
+					}
+				}
 			}
 			
 //			org.eclipse.jdt.internal.compiler.ast.TypeReference typeReference = annotDecl.get
@@ -287,6 +289,13 @@ class JavacConverter {
 	}
 
 	private ASTNode convertBodyDeclaration(JCTree tree) {
+		return convertBodyDeclaration(tree, null);
+	}
+	
+	private ASTNode convertBodyDeclaration(JCTree tree, ASTNode parent) {
+		if( parent instanceof AnnotationTypeDeclaration && tree instanceof JCMethodDecl methodDecl) {
+			return convertMethodInAnnotationTypeDecl(methodDecl);
+		}
 		if (tree instanceof JCMethodDecl methodDecl) {
 			return convertMethodDecl(methodDecl);
 		}
@@ -303,6 +312,17 @@ class JavacConverter {
 			return res;
 		}
 		throw new UnsupportedOperationException("Unsupported " + tree + " of type" + tree.getClass());
+	}
+
+	private ASTNode convertMethodInAnnotationTypeDecl(JCMethodDecl javac) {
+		AnnotationTypeMemberDeclaration res = new AnnotationTypeMemberDeclaration(this.ast);
+		commonSettings(res, javac);
+		res.modifiers().addAll(convert(javac.getModifiers()));
+		res.setType(convertToType(javac.getReturnType()));
+		if (convert(javac.getName()) instanceof SimpleName simpleName) {
+			res.setName(simpleName);
+		}
+		return res;
 	}
 
 	private MethodDeclaration convertMethodDecl(JCMethodDecl javac) {

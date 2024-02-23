@@ -110,9 +110,14 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		}
 		// For comparison
 		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
-
+		//res.typeAndFlags=res2.typeAndFlags;
 		String res1a = res.toString();
 		String res2a = res2.toString();
+		
+		AnnotationTypeDeclaration l1 = (AnnotationTypeDeclaration)res.types().get(0);
+		AnnotationTypeDeclaration l2 = (AnnotationTypeDeclaration)res2.types().get(0);
+		Object o1 = l1.bodyDeclarations().get(0);
+		Object o2 = l2.bodyDeclarations().get(0);
 		return res;
 	}
 
@@ -126,6 +131,10 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		};
 		Context context = new Context();
 		AST ast = createAST(compilerOptions, apiLevel, context);
+//		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
+//		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
+//		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
+		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
 		CompilationUnit res = ast.newCompilationUnit();
 		context.put(DiagnosticListener.class, diagnostic -> {
 			if (Objects.equals(diagnostic.getSource(), fileObject) ||
@@ -139,15 +148,12 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		JavacUtils.configureJavacContext(context, compilerOptions, javaProject);
 		JavaCompiler javac = JavaCompiler.instance(context);
 		JCCompilationUnit javacCompilationUnit = javac.parse(fileObject);
-		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
-		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
 		JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context);
 		converter.populateCompilationUnit(res, javacCompilationUnit);
 		attachComments(res, context, fileObject, converter, compilerOptions);
 		ast.setBindingResolver(new JavacBindingResolver(javac, javaProject, context, converter));
 		//
 		ast.setOriginalModificationCount(ast.modificationCount()); // "un-dirty" AST so Rewrite can process it
-		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
 		return res;
 	}
 
