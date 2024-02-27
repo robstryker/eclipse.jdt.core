@@ -106,7 +106,9 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		// TODO currently only parse
 		CompilationUnit res = parse(sourceUnit, apiLevel, compilerOptions, flags, project, monitor);
 		if (initialNeedsToResolveBinding) {
-			res.getPackage().resolveBinding();
+			if( res.getPackage() != null ) {
+				res.getPackage().resolveBinding();
+			}
 		}
 		// For comparison
 //		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
