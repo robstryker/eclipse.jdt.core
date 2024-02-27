@@ -215,7 +215,9 @@ class JavacConverter {
 		}
 		if (res instanceof TypeDeclaration typeDeclaration) {
 			if (javacClassDecl.getExtendsClause() != null) {
-				typeDeclaration.setSuperclassType(convertToType(javacClassDecl.getExtendsClause()));
+				if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+					typeDeclaration.setSuperclassType(convertToType(javacClassDecl.getExtendsClause()));
+				}
 			}
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				if (javacClassDecl.getImplementsClause() != null) {
