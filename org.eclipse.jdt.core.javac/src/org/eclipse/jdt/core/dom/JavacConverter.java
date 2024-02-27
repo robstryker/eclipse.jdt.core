@@ -210,20 +210,26 @@ class JavacConverter {
 		};
 		commonSettings(res, javacClassDecl);
 		res.setName((SimpleName)convert(javacClassDecl.getSimpleName()));
-		res.modifiers().addAll(convert(javacClassDecl.mods));
+		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+			res.modifiers().addAll(convert(javacClassDecl.mods));
+		}
 		if (res instanceof TypeDeclaration typeDeclaration) {
 			if (javacClassDecl.getExtendsClause() != null) {
 				typeDeclaration.setSuperclassType(convertToType(javacClassDecl.getExtendsClause()));
 			}
-			if (javacClassDecl.getImplementsClause() != null) {
-				javacClassDecl.getImplementsClause().stream()
-					.map(this::convertToType)
-					.forEach(typeDeclaration.superInterfaceTypes()::add);
+			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+				if (javacClassDecl.getImplementsClause() != null) {
+					javacClassDecl.getImplementsClause().stream()
+						.map(this::convertToType)
+						.forEach(typeDeclaration.superInterfaceTypes()::add);
+				}
 			}
 			if (javacClassDecl.getPermitsClause() != null) {
-				javacClassDecl.getPermitsClause().stream()
-					.map(this::convertToType)
-					.forEach(typeDeclaration.permittedTypes()::add);
+				if( this.ast.apiLevel >= AST.JLS17_INTERNAL) {
+					javacClassDecl.getPermitsClause().stream()
+						.map(this::convertToType)
+						.forEach(typeDeclaration.permittedTypes()::add);
+				}
 			}
 			if (javacClassDecl.getMembers() != null) {
 				javacClassDecl.getMembers().stream()
@@ -328,14 +334,17 @@ class JavacConverter {
 	private MethodDeclaration convertMethodDecl(JCMethodDecl javac) {
 		MethodDeclaration res = this.ast.newMethodDeclaration();
 		commonSettings(res, javac);
-		res.modifiers().addAll(convert(javac.getModifiers()));
+		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+			res.modifiers().addAll(convert(javac.getModifiers()));
+		}
 		res.setConstructor(Objects.equals(javac.getName(), Names.instance(this.context).init));
 		if (!res.isConstructor()) {
 			res.setName((SimpleName)convert(javac.getName()));
 		}
 		if (javac.getReturnType() != null) {
-		//res.setConstructor(javac.);
-			res.setReturnType2(convertToType(javac.getReturnType()));
+			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+				res.setReturnType2(convertToType(javac.getReturnType()));
+			}
 		}
 		javac.getParameters().stream().map(this::convertVariableDeclaration).forEach(res.parameters()::add);
 		if (javac.getBody() != null) {
