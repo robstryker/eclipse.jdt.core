@@ -362,7 +362,9 @@ class JavacConverter {
 		if (convert(javac.getName()) instanceof SimpleName simpleName) {
 			res.setName(simpleName);
 		}
-		res.modifiers().addAll(convert(javac.getModifiers()));
+		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+			res.modifiers().addAll(convert(javac.getModifiers()));
+		}
 		if (javac.getType() != null) {
 			res.setType(convertToType(javac.getType()));
 		}
@@ -384,7 +386,9 @@ class JavacConverter {
 		}
 		FieldDeclaration res = this.ast.newFieldDeclaration(fragment);
 		commonSettings(res, javac);
-		res.modifiers().addAll(convert(javac.getModifiers()));
+		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+			res.modifiers().addAll(convert(javac.getModifiers()));
+		}
 		res.setType(convertToType(javac.getType()));
 		return res;
 	}
