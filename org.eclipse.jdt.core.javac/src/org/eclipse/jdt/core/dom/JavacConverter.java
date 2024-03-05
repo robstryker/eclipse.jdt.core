@@ -108,7 +108,6 @@ class JavacConverter {
 	private final JCCompilationUnit javacCompilationUnit;
 	private final Context context;
 	final Map<ASTNode, JCTree> domToJavac = new HashMap<>();
-	//private final Map<JCTree, ASTNode> javacToDom = new HashMap<>();
 
 	public JavacConverter(AST ast, JCCompilationUnit javacCompilationUnit, Context context) {
 		this.ast = ast;
@@ -130,7 +129,7 @@ class JavacConverter {
 		}
 		javacCompilationUnit.getImports().stream().map(jc -> convert(jc)).forEach(res.imports()::add);
 		javacCompilationUnit.getTypeDecls().stream()
-			.map(this::convertBodyDeclaration)
+			.map(n -> convertBodyDeclaration(n, res))
 			.forEach(res.types()::add);
 		res.accept(new FixPositions());
 	}
@@ -195,7 +194,7 @@ class JavacConverter {
 		throw new UnsupportedOperationException("toName for " + expression + " (" + expression.getClass().getName() + ")");
 	}
 
-	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl) {
+	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl, ASTNode parent) {
 		AbstractTypeDeclaration	res = switch (javacClassDecl.getKind()) {
 			case ANNOTATION_TYPE -> this.ast.newAnnotationTypeDeclaration();
 			case ENUM -> this.ast.newEnumDeclaration();
@@ -234,9 +233,13 @@ class JavacConverter {
 				}
 			}
 			if (javacClassDecl.getMembers() != null) {
-				javacClassDecl.getMembers().stream()
-					.map(this::convertBodyDeclaration)
-					.forEach(typeDeclaration.bodyDeclarations()::add);
+				List<JCTree> members = javacClassDecl.getMembers();
+				for( int i = 0; i < members.size(); i++ ) {
+					ASTNode decl = convertBodyDeclaration(members.get(i), res);
+					if( decl != null ) {
+						typeDeclaration.bodyDeclarations().add(decl);
+					}
+				}
 			}
 //
 //			Javadoc doc = this.ast.newJavadoc();
@@ -249,18 +252,22 @@ class JavacConverter {
 		} else if (res instanceof EnumDeclaration enumDecl) {
 	        List enumStatements= enumDecl.enumConstants();
 			if (javacClassDecl.getMembers() != null) {
-				javacClassDecl.getMembers().stream()
-					.map(this::convertEnumConstantDeclaration)
-					.filter(t -> t != null)
-					.forEach(enumStatements::add);
+		        for( Iterator<JCTree> i = javacClassDecl.getMembers().iterator(); i.hasNext(); ) {
+		        	EnumConstantDeclaration dec1 = convertEnumConstantDeclaration(i.next(), parent);
+		        	if( dec1 != null ) {
+		        		enumStatements.add(dec1);
+		        	}
+		        }
 			}
 			
 			List bodyDecl = enumDecl.bodyDeclarations();
 			if (javacClassDecl.getMembers() != null) {
-				javacClassDecl.getMembers().stream()
-					.map(this::convertEnumFieldDeclaration)
-					.filter(t -> t != null)
-					.forEach(bodyDecl::add);
+		        for( Iterator<JCTree> i = javacClassDecl.getMembers().iterator(); i.hasNext(); ) {
+		        	BodyDeclaration bd = convertEnumFieldOrMethodDeclaration(i.next(), res);
+		        	if( bd != null ) {
+		        		bodyDecl.add(bd);
+		        	}
+		        }
 			}
 		} else if (res instanceof AnnotationTypeDeclaration annotDecl) {
 			//setModifiers(annotationTypeMemberDeclaration2, annotationTypeMemberDeclaration);
@@ -296,22 +303,18 @@ class JavacConverter {
 		return res;
 	}
 
-	private ASTNode convertBodyDeclaration(JCTree tree) {
-		return convertBodyDeclaration(tree, null);
-	}
-	
 	private ASTNode convertBodyDeclaration(JCTree tree, ASTNode parent) {
 		if( parent instanceof AnnotationTypeDeclaration && tree instanceof JCMethodDecl methodDecl) {
-			return convertMethodInAnnotationTypeDecl(methodDecl);
+			return convertMethodInAnnotationTypeDecl(methodDecl, parent);
 		}
 		if (tree instanceof JCMethodDecl methodDecl) {
-			return convertMethodDecl(methodDecl);
+			return convertMethodDecl(methodDecl, parent);
 		}
 		if (tree instanceof JCClassDecl jcClassDecl) {
-			return convertClassDecl(jcClassDecl);
+			return convertClassDecl(jcClassDecl, parent);
 		}
 		if (tree instanceof JCVariableDecl jcVariableDecl) {
-			return convertFieldDeclaration(jcVariableDecl);
+			return convertFieldDeclaration(jcVariableDecl, parent);
 		}
 		if (tree instanceof JCBlock block) {
 			Initializer res = this.ast.newInitializer();
@@ -322,7 +325,7 @@ class JavacConverter {
 		throw new UnsupportedOperationException("Unsupported " + tree + " of type" + tree.getClass());
 	}
 
-	private ASTNode convertMethodInAnnotationTypeDecl(JCMethodDecl javac) {
+	private ASTNode convertMethodInAnnotationTypeDecl(JCMethodDecl javac, ASTNode parent) {
 		AnnotationTypeMemberDeclaration res = new AnnotationTypeMemberDeclaration(this.ast);
 		commonSettings(res, javac);
 		res.modifiers().addAll(convert(javac.getModifiers()));
@@ -333,7 +336,7 @@ class JavacConverter {
 		return res;
 	}
 
-	private MethodDeclaration convertMethodDecl(JCMethodDecl javac) {
+	private MethodDeclaration convertMethodDecl(JCMethodDecl javac, ASTNode parent) {
 		MethodDeclaration res = this.ast.newMethodDeclaration();
 		commonSettings(res, javac);
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
@@ -342,6 +345,10 @@ class JavacConverter {
 		res.setConstructor(Objects.equals(javac.getName(), Names.instance(this.context).init));
 		if (!res.isConstructor()) {
 			res.setName((SimpleName)convert(javac.getName()));
+		} else {
+			if( parent instanceof AbstractTypeDeclaration atd) {
+				res.setName(this.ast.newSimpleName(atd.getName().toString()));
+			}
 		}
 		if (javac.getReturnType() != null) {
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
@@ -375,22 +382,49 @@ class JavacConverter {
 	}
 
 	private FieldDeclaration convertFieldDeclaration(JCVariableDecl javac) {
+		return convertFieldDeclaration(javac, null);
+	}
+	
+	private FieldDeclaration convertFieldDeclaration(JCVariableDecl javac, ASTNode parent) {
+
 		// if (singleDecl) {
 		VariableDeclarationFragment fragment = this.ast.newVariableDeclarationFragment();
 		commonSettings(fragment, javac);
+		int fragmentEnd = javac.getEndPosition(this.javacCompilationUnit.endPositions);
+		int fragmentLength = javac.getName().toString().length();
+		int fragmentStart = fragmentEnd - fragmentLength - 1;
+		fragment.setSourceRange(fragmentStart, Math.max(0, fragmentLength));
+
 		if (convert(javac.getName()) instanceof SimpleName simpleName) {
 			fragment.setName(simpleName);
 		}
 		if (javac.getInitializer() != null) {
 			fragment.setInitializer(convertExpression(javac.getInitializer()));
 		}
-		FieldDeclaration res = this.ast.newFieldDeclaration(fragment);
-		commonSettings(res, javac);
-		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
-			res.modifiers().addAll(convert(javac.getModifiers()));
+		
+		List<ASTNode> sameStartPosition = new ArrayList<>();
+		if( parent instanceof TypeDeclaration decl) {
+			decl.bodyDeclarations().stream().filter(x -> x instanceof FieldDeclaration)
+					.filter(x -> ((FieldDeclaration)x).getStartPosition() == javac.getStartPosition())
+					.forEach(x -> sameStartPosition.add((ASTNode)x));
 		}
-		res.setType(convertToType(javac.getType()));
-		return res;
+		if( sameStartPosition.size() >= 1 ) {
+			FieldDeclaration fd = (FieldDeclaration)sameStartPosition.get(0);
+			if( fd != null ) {
+				fd.fragments().add(fragment);
+				int newParentEnd = fragment.getStartPosition() + fragment.getLength();
+				fd.setSourceRange(fd.getStartPosition(), newParentEnd - fd.getStartPosition() + 1);
+			}
+			return null;
+		} else {
+			FieldDeclaration res = this.ast.newFieldDeclaration(fragment);
+			commonSettings(res, javac);
+			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+				res.modifiers().addAll(convert(javac.getModifiers()));
+			}
+			res.setType(convertToType(javac.getType()));
+			return res;
+		}
 	}
 
 	private Expression convertExpression(JCExpression javac) {
@@ -457,14 +491,18 @@ class JavacConverter {
 					.forEach(res.arguments()::add);
 			}
 			if (methodInvocation.getTypeArguments() != null) {
-				methodInvocation.getTypeArguments().stream().map(this::convertToType).forEach(res.typeArguments()::add);
+				if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+					methodInvocation.getTypeArguments().stream().map(this::convertToType).forEach(res.typeArguments()::add);
+				}
 			}
 			return res;
 		}
 		if (javac instanceof JCNewClass newClass) {
 			ClassInstanceCreation res = this.ast.newClassInstanceCreation();
 			commonSettings(res, javac);
-			res.setType(convertToType(newClass.getIdentifier()));
+			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
+				res.setType(convertToType(newClass.getIdentifier()));
+			}
 			if (newClass.getClassBody() != null) {
 				res.setAnonymousClassDeclaration(null); // TODO
 			}
@@ -1046,6 +1084,7 @@ class JavacConverter {
 		}
 		int lastDot = javac.lastIndexOf((byte)'.');
 		if (lastDot < 0) {
+			String ts = javac.toString();
 			return this.ast.newSimpleName(javac.toString());
 		} else {
 			return this.ast.newQualifiedName(convert(javac.subName(0, lastDot)), (SimpleName)convert(javac.subName(lastDot + 1, javac.length() - 1)));
@@ -1108,7 +1147,7 @@ class JavacConverter {
 		@Override
 		public boolean visit(QualifiedName node) {
 			if (node.getStartPosition() < 0) {
-				int foundOffset = findPositionOfText(node.getFullyQualifiedName(), node.getParent(), siblings(node));
+				int foundOffset = findPositionOfText(node.getFullyQualifiedName(), node.getParent(), siblingsOf(node));
 				if (foundOffset >= 0) {
 					node.setSourceRange(foundOffset, node.getFullyQualifiedName().length());
 				}
@@ -1126,7 +1165,7 @@ class JavacConverter {
 		@Override
 		public boolean visit(SimpleName name) {
 			if (name.getStartPosition() < 0) {
-				int foundOffset = findPositionOfText(name.getIdentifier(), name.getParent(), siblings(name));
+				int foundOffset = findPositionOfText(name.getIdentifier(), name.getParent(), siblingsOf(name));
 				if (foundOffset >= 0) {
 					name.setSourceRange(foundOffset, name.getIdentifier().length());
 				}
@@ -1144,14 +1183,6 @@ class JavacConverter {
 				ILog.get().warn("Couldn't compute position of " + modifier);
 			}
 			return true;
-		}
-
-		private static List<ASTNode> siblings(ASTNode node) {
-			return ((Collection<Object>)node.getParent().properties().values()).stream()
-				.filter(ASTNode.class::isInstance)
-				.map(ASTNode.class::cast)
-				.filter(Predicate.not(node::equals))
-				.toList();
 		}
 
 		private int findPositionOfText(String text, ASTNode in, List<ASTNode> excluding) {
@@ -1181,7 +1212,7 @@ class JavacConverter {
 		}
 	}
 
-	private EnumConstantDeclaration convertEnumConstantDeclaration(JCTree var) {
+	private EnumConstantDeclaration convertEnumConstantDeclaration(JCTree var, ASTNode parent) {
 		EnumConstantDeclaration enumConstantDeclaration = null;
 		if( var instanceof JCVariableDecl enumConstant ) {
 			if( enumConstant.getType() instanceof JCIdent) {
@@ -1197,13 +1228,30 @@ class JavacConverter {
 		return enumConstantDeclaration;
 	}
 
-	private FieldDeclaration convertEnumFieldDeclaration(JCTree var) {
+	private BodyDeclaration convertEnumFieldOrMethodDeclaration(JCTree var, BodyDeclaration parent) {
 		if( var instanceof JCVariableDecl field ) {
 			if( !(field.getType() instanceof JCIdent)) {
 				return convertFieldDeclaration(field);
 			}
 		}
+		if( var instanceof JCMethodDecl method) {
+			return convertMethodDecl(method, parent);
+		}
+		
 		return null;
 	}
+
+	private static List<ASTNode> siblingsOf(ASTNode node) {
+		return childrenOf(node.getParent());
+	}
+
+	private static List<ASTNode> childrenOf(ASTNode node) {
+		return ((Collection<Object>)node.properties().values()).stream()
+			.filter(ASTNode.class::isInstance)
+			.map(ASTNode.class::cast)
+			.filter(Predicate.not(node::equals))
+			.toList();
+	}
+
 
 }
