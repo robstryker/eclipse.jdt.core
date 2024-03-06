@@ -35,6 +35,7 @@ import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
 import com.sun.source.tree.CaseTree.CaseKind;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
@@ -208,7 +209,9 @@ class JavacConverter {
 			default -> throw new IllegalStateException();
 		};
 		commonSettings(res, javacClassDecl);
-		res.setName((SimpleName)convert(javacClassDecl.getSimpleName()));
+		SimpleName simpName = (SimpleName)convert(javacClassDecl.getSimpleName());
+		if( simpName != null )
+			res.setName(simpName);
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 			res.modifiers().addAll(convert(javacClassDecl.mods));
 		}
@@ -216,6 +219,13 @@ class JavacConverter {
 			if (javacClassDecl.getExtendsClause() != null) {
 				if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 					typeDeclaration.setSuperclassType(convertToType(javacClassDecl.getExtendsClause()));
+				} else {
+					JCExpression e = javacClassDecl.getExtendsClause();
+					if( e instanceof JCFieldAccess jcfa) {
+						String pack = jcfa.selected == null ? null : jcfa.selected.toString();
+						typeDeclaration.setSuperclass(convert(jcfa.name, pack));
+					}
+					
 				}
 			}
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
@@ -223,6 +233,17 @@ class JavacConverter {
 					javacClassDecl.getImplementsClause().stream()
 						.map(this::convertToType)
 						.forEach(typeDeclaration.superInterfaceTypes()::add);
+				}
+			} else {
+				if (javacClassDecl.getImplementsClause() != null) {
+					Iterator<JCExpression> it = javacClassDecl.getImplementsClause().iterator();
+					while(it.hasNext()) {
+						JCExpression next = it.next();
+						if( next instanceof JCFieldAccess jcfa ) {
+							String pack = jcfa.selected == null ? null : jcfa.selected.toString();
+							typeDeclaration.superInterfaces().add(convert(jcfa.name, pack));
+						}
+					}
 				}
 			}
 			if (javacClassDecl.getPermitsClause() != null) {
@@ -342,7 +363,8 @@ class JavacConverter {
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 			res.modifiers().addAll(convert(javac.getModifiers()));
 		}
-		res.setConstructor(Objects.equals(javac.getName(), Names.instance(this.context).init));
+		boolean isConstructor = Objects.equals(javac.getName(), Names.instance(this.context).init);
+		res.setConstructor(isConstructor);
 		if (!res.isConstructor()) {
 			res.setName((SimpleName)convert(javac.getName()));
 		} else {
@@ -353,6 +375,8 @@ class JavacConverter {
 		if (javac.getReturnType() != null) {
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				res.setReturnType2(convertToType(javac.getReturnType()));
+			} else {
+				res.internalSetReturnType(convertToType(javac.getReturnType()));
 			}
 		}
 		javac.getParameters().stream().map(this::convertVariableDeclaration).forEach(res.parameters()::add);
@@ -371,6 +395,21 @@ class JavacConverter {
 		}
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 			res.modifiers().addAll(convert(javac.getModifiers()));
+		} else {
+			int flags = 0;
+			if( (javac.mods.flags & Flags.PUBLIC) > 0) flags += Flags.PUBLIC;
+			if( (javac.mods.flags & Flags.PRIVATE) > 0) flags += Flags.PRIVATE;
+			if( (javac.mods.flags & Flags.PROTECTED) > 0) flags += Flags.PROTECTED;
+			if( (javac.mods.flags & Flags.STATIC) > 0) flags += Flags.STATIC;
+			if( (javac.mods.flags & Flags.FINAL) > 0) flags += Flags.FINAL;
+			if( (javac.mods.flags & Flags.SYNCHRONIZED) > 0) flags += Flags.SYNCHRONIZED;
+			if( (javac.mods.flags & Flags.VOLATILE) > 0) flags += Flags.VOLATILE;
+			if( (javac.mods.flags & Flags.TRANSIENT) > 0) flags += Flags.TRANSIENT;
+			if( (javac.mods.flags & Flags.NATIVE) > 0) flags += Flags.NATIVE;
+			if( (javac.mods.flags & Flags.INTERFACE) > 0) flags += Flags.INTERFACE;
+			if( (javac.mods.flags & Flags.ABSTRACT) > 0) flags += Flags.ABSTRACT;
+			if( (javac.mods.flags & Flags.STRICTFP) > 0) flags += Flags.STRICTFP;
+			res.internalSetModifiers(flags);
 		}
 		if (javac.getType() != null) {
 			res.setType(convertToType(javac.getType()));
@@ -757,6 +796,10 @@ class JavacConverter {
 	}
 
 	private Statement convertStatement(JCStatement javac) {
+		return convertStatement(javac, null);
+	}
+	
+	private Statement convertStatement(JCStatement javac, ASTNode parent) {
 		if (javac instanceof JCReturn returnStatement) {
 			ReturnStatement res = this.ast.newReturnStatement();
 			commonSettings(res, javac);
@@ -911,6 +954,11 @@ class JavacConverter {
 			res.setExpression(convertExpression(jcAssert.getCondition()));
 			return res;
 		}
+		if (javac instanceof JCClassDecl jcclass) {
+			TypeDeclarationStatement res = this.ast.newTypeDeclarationStatement(convertClassDecl(jcclass, parent));
+			commonSettings(res, javac);
+			return res;
+		}
 		throw new UnsupportedOperationException("Missing support to convert " + javac + "of type " + javac.getClass().getName());
 	}
 
@@ -934,9 +982,12 @@ class JavacConverter {
 		Block res = this.ast.newBlock();
 		commonSettings(res, javac);
 		if (javac.getStatements() != null) {
-			javac.getStatements().stream()
-				.map(this::convertStatement)
-				.forEach(res.statements()::add);
+			for( Iterator i = javac.getStatements().iterator(); i.hasNext();) {
+				Statement s = convertStatement((JCStatement)i.next());
+				if( s != null ) {
+					res.statements().add(s);
+				}
+			}
 		}
 		return res;
 	}
@@ -987,9 +1038,11 @@ class JavacConverter {
 			return res;
 		}
 		if (javac instanceof JCFieldAccess qualified) {
-			QualifiedType res = this.ast.newQualifiedType(convertToType(qualified.getExpression()), (SimpleName)convert(qualified.name));
-			commonSettings(res, qualified);
-			return res;
+			if( this.ast.apiLevel != AST.JLS2_INTERNAL ) {
+				QualifiedType res = this.ast.newQualifiedType(convertToType(qualified.getExpression()), (SimpleName)convert(qualified.name));
+				commonSettings(res, qualified);
+				return res;
+			}
 		}
 		if (javac instanceof JCPrimitiveTypeTree primitiveTypeTree) {
 			PrimitiveType res = this.ast.newPrimitiveType(convert(primitiveTypeTree.getPrimitiveTypeKind()));
@@ -1084,10 +1137,21 @@ class JavacConverter {
 		}
 		int lastDot = javac.lastIndexOf((byte)'.');
 		if (lastDot < 0) {
-			String ts = javac.toString();
 			return this.ast.newSimpleName(javac.toString());
 		} else {
 			return this.ast.newQualifiedName(convert(javac.subName(0, lastDot)), (SimpleName)convert(javac.subName(lastDot + 1, javac.length() - 1)));
+		}
+		// position is set later, in FixPositions, as computing them depends on the sibling
+	}
+
+	private Name convert(com.sun.tools.javac.util.Name javac, String selected) {
+		if (javac == null || Objects.equals(javac, Names.instance(this.context).error) || Objects.equals(javac, Names.instance(this.context).empty)) {
+			return null;
+		}
+		if (selected == null) {
+			return this.ast.newSimpleName(javac.toString());
+		} else {
+			return this.ast.newQualifiedName(this.ast.newName(selected), this.ast.newSimpleName(javac.toString()));
 		}
 		// position is set later, in FixPositions, as computing them depends on the sibling
 	}
