@@ -212,6 +212,11 @@ class JavacConverter {
 			case CLASS -> this.ast.newTypeDeclaration();
 			default -> throw new IllegalStateException();
 		};
+		return convertClassDecl(javacClassDecl, parent, res);
+	}
+	
+//	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl, ASTNode parent, AbstractTypeDeclaration res) {
+	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl, ASTNode parent, AbstractTypeDeclaration res) {
 		commonSettings(res, javacClassDecl);
 		SimpleName simpName = (SimpleName)convert(javacClassDecl.getSimpleName());
 		if( simpName != null )
@@ -568,8 +573,19 @@ class JavacConverter {
 			} else {
 				res.setName(toName(newClass.clazz));
 			}
-			if (newClass.getClassBody() != null) {
-				res.setAnonymousClassDeclaration(null); // TODO
+			if (newClass.getClassBody() != null && newClass.getClassBody() instanceof JCClassDecl javacAnon) {
+				AnonymousClassDeclaration anon = this.ast.newAnonymousClassDeclaration();
+				commonSettings(anon, javacAnon);
+				if (javacAnon.getMembers() != null) {
+					List<JCTree> members = javacAnon.getMembers();
+					for( int i = 0; i < members.size(); i++ ) {
+						ASTNode decl = convertBodyDeclaration(members.get(i), res);
+						if( decl != null ) {
+							anon.bodyDeclarations().add(decl);
+						}
+					}
+				}
+				res.setAnonymousClassDeclaration(anon);
 			}
 			if (newClass.getArguments() != null) {
 				newClass.getArguments().stream()
