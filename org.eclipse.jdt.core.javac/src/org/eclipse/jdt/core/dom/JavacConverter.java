@@ -10,7 +10,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.dom;
 
-import static com.sun.tools.javac.tree.JCTree.Tag.ANNOTATED_TYPE;
+import static com.sun.tools.javac.code.Flags.VARARGS;
 import static com.sun.tools.javac.tree.JCTree.Tag.TYPEARRAY;
 
 import java.io.IOException;
@@ -34,6 +34,7 @@ import org.eclipse.core.runtime.ILog;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
@@ -41,7 +42,6 @@ import com.sun.source.tree.CaseTree.CaseKind;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.JCTree.JCAnnotatedType;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
 import com.sun.tools.javac.tree.JCTree.JCAnyPattern;
 import com.sun.tools.javac.tree.JCTree.JCArrayAccess;
@@ -91,6 +91,7 @@ import com.sun.tools.javac.tree.JCTree.JCTry;
 import com.sun.tools.javac.tree.JCTree.JCTypeApply;
 import com.sun.tools.javac.tree.JCTree.JCTypeCast;
 import com.sun.tools.javac.tree.JCTree.JCTypeIntersection;
+import com.sun.tools.javac.tree.JCTree.JCTypeParameter;
 import com.sun.tools.javac.tree.JCTree.JCTypeUnion;
 import com.sun.tools.javac.tree.JCTree.JCUnary;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
@@ -236,17 +237,14 @@ class JavacConverter {
 						String pack = jcfa.selected == null ? null : jcfa.selected.toString();
 						typeDeclaration.setSuperclass(convert(jcfa.name, pack));
 					}
-					
 				}
 			}
-			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
-				if (javacClassDecl.getImplementsClause() != null) {
+			if (javacClassDecl.getImplementsClause() != null) {
+				if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 					javacClassDecl.getImplementsClause().stream()
 						.map(this::convertToType)
 						.forEach(typeDeclaration.superInterfaceTypes()::add);
-				}
-			} else {
-				if (javacClassDecl.getImplementsClause() != null) {
+				} else {
 					Iterator<JCExpression> it = javacClassDecl.getImplementsClause().iterator();
 					while(it.hasNext()) {
 						JCExpression next = it.next();
@@ -257,6 +255,15 @@ class JavacConverter {
 					}
 				}
 			}
+			
+			if( javacClassDecl.getTypeParameters() != null ) {
+				Iterator<JCTypeParameter> i = javacClassDecl.getTypeParameters().iterator();
+				while(i.hasNext()) {
+					JCTypeParameter next = i.next();
+					typeDeclaration.typeParameters().add(convert(next));
+				}
+			}
+			
 			if (javacClassDecl.getPermitsClause() != null) {
 				if( this.ast.apiLevel >= AST.JLS17_INTERNAL) {
 					javacClassDecl.getPermitsClause().stream()
@@ -335,6 +342,48 @@ class JavacConverter {
 		return res;
 	}
 
+	private TypeParameter convert(JCTypeParameter typeParameter) {
+		final TypeParameter typeParameter2 = new TypeParameter(this.ast);
+		final SimpleName simpleName = new SimpleName(this.ast);
+		simpleName.internalSetIdentifier(typeParameter.getName().toString());
+		int start = typeParameter.pos;
+		int end = typeParameter.pos + typeParameter.getName().length();
+		simpleName.setSourceRange(start, end - start + 1);
+		typeParameter2.setName(simpleName);
+		int annotationsStart = start;
+//		org.eclipse.jdt.internal.compiler.ast.Annotation[] annotations = typeParameter.annotations;
+//		if (annotations != null) {
+//			if (annotations[0] != null)
+//				annotationsStart = annotations[0].sourceStart;
+//			annotateTypeParameter(typeParameter2, typeParameter.annotations);
+//		}
+//		final TypeReference superType = typeParameter.type;
+//		end = typeParameter.declarationSourceEnd;
+//		if (superType != null) {
+//			Type type = convertType(superType);
+//			typeParameter2.typeBounds().add(type);
+//			end = type.getStartPosition() + type.getLength() - 1;
+//		}
+//		TypeReference[] bounds = typeParameter.bounds;
+//		if (bounds != null) {
+//			Type type = null;
+//			for (int index = 0, length = bounds.length; index < length; index++) {
+//				type = convertType(bounds[index]);
+//				typeParameter2.typeBounds().add(type);
+//				end = type.getStartPosition() + type.getLength() - 1;
+//			}
+//		}
+//		start = annotationsStart < typeParameter.declarationSourceStart ? annotationsStart : typeParameter.declarationSourceStart;
+//		end = retrieveClosingAngleBracketPosition(end);
+		typeParameter2.setSourceRange(start, end - start + 1);
+//		if (this.resolveBindings) {
+//			recordName(simpleName, typeParameter);
+//			recordNodes(typeParameter2, typeParameter);
+//			typeParameter2.resolveBinding();
+//		}
+		return typeParameter2;
+	}
+
 	private ASTNode convertBodyDeclaration(JCTree tree, ASTNode parent) {
 		if( parent instanceof AnnotationTypeDeclaration && tree instanceof JCMethodDecl methodDecl) {
 			return convertMethodInAnnotationTypeDecl(methodDecl, parent);
@@ -400,6 +449,7 @@ class JavacConverter {
 	private VariableDeclaration convertVariableDeclaration(JCVariableDecl javac) {
 		// if (singleDecl) {
 		SingleVariableDeclaration res = this.ast.newSingleVariableDeclaration();
+		String z = javac.toString();
 		commonSettings(res, javac);
 		if (convert(javac.getName()) instanceof SimpleName simpleName) {
 			res.setName(simpleName);
@@ -420,6 +470,12 @@ class JavacConverter {
 					res.setExtraDimensions(countDimensions(jcatt));
 				}
 			}
+		} else if ( (javac.mods.flags & VARARGS) != 0) {
+			// We have varity
+			if( javac.getType() instanceof JCArrayTypeTree arr) {
+				res.setType(convertToType(arr.elemtype));
+			}
+			res.setVarargs(true);
 		} else {
 			// the array dimensions are part of the type
 			if (javac.getType() != null) {
