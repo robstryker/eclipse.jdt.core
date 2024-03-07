@@ -10,6 +10,9 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.dom;
 
+import static com.sun.tools.javac.tree.JCTree.Tag.ANNOTATED_TYPE;
+import static com.sun.tools.javac.tree.JCTree.Tag.TYPEARRAY;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +41,7 @@ import com.sun.source.tree.CaseTree.CaseKind;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCAnnotatedType;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
 import com.sun.tools.javac.tree.JCTree.JCAnyPattern;
 import com.sun.tools.javac.tree.JCTree.JCArrayAccess;
@@ -214,6 +218,8 @@ class JavacConverter {
 			res.setName(simpName);
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 			res.modifiers().addAll(convert(javacClassDecl.mods));
+		} else {
+			res.internalSetModifiers(getJLS2ModifiersFlags(javacClassDecl.mods));
 		}
 		if (res instanceof TypeDeclaration typeDeclaration) {
 			if (javacClassDecl.getExtendsClause() != null) {
@@ -396,23 +402,24 @@ class JavacConverter {
 		if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 			res.modifiers().addAll(convert(javac.getModifiers()));
 		} else {
-			int flags = 0;
-			if( (javac.mods.flags & Flags.PUBLIC) > 0) flags += Flags.PUBLIC;
-			if( (javac.mods.flags & Flags.PRIVATE) > 0) flags += Flags.PRIVATE;
-			if( (javac.mods.flags & Flags.PROTECTED) > 0) flags += Flags.PROTECTED;
-			if( (javac.mods.flags & Flags.STATIC) > 0) flags += Flags.STATIC;
-			if( (javac.mods.flags & Flags.FINAL) > 0) flags += Flags.FINAL;
-			if( (javac.mods.flags & Flags.SYNCHRONIZED) > 0) flags += Flags.SYNCHRONIZED;
-			if( (javac.mods.flags & Flags.VOLATILE) > 0) flags += Flags.VOLATILE;
-			if( (javac.mods.flags & Flags.TRANSIENT) > 0) flags += Flags.TRANSIENT;
-			if( (javac.mods.flags & Flags.NATIVE) > 0) flags += Flags.NATIVE;
-			if( (javac.mods.flags & Flags.INTERFACE) > 0) flags += Flags.INTERFACE;
-			if( (javac.mods.flags & Flags.ABSTRACT) > 0) flags += Flags.ABSTRACT;
-			if( (javac.mods.flags & Flags.STRICTFP) > 0) flags += Flags.STRICTFP;
-			res.internalSetModifiers(flags);
+			res.internalSetModifiers(getJLS2ModifiersFlags(javac.mods));
 		}
-		if (javac.getType() != null) {
-			res.setType(convertToType(javac.getType()));
+		if( javac.getType() instanceof JCArrayTypeTree jcatt && javac.vartype.pos > javac.pos ) {
+			// The array dimensions are part of the variable name
+			if (jcatt.getType() != null) {
+				res.setType(convertToType(jcatt.getType()));
+				if( this.ast.apiLevel < AST.JLS8_INTERNAL) {
+					res.setExtraDimensions(countDimensions(jcatt));
+				} else {
+					// TODO might be buggy
+					res.setExtraDimensions(countDimensions(jcatt));
+				}
+			}
+		} else {
+			// the array dimensions are part of the type
+			if (javac.getType() != null) {
+				res.setType(convertToType(javac.getType()));
+			}
 		}
 		if (javac.getInitializer() != null) {
 			res.setInitializer(convertExpression(javac.getInitializer()));
@@ -420,6 +427,23 @@ class JavacConverter {
 		return res;
 	}
 
+	private int getJLS2ModifiersFlags(JCModifiers mods) {
+		int flags = 0;
+		if( (mods.flags & Flags.PUBLIC) > 0) flags += Flags.PUBLIC;
+		if( (mods.flags & Flags.PRIVATE) > 0) flags += Flags.PRIVATE;
+		if( (mods.flags & Flags.PROTECTED) > 0) flags += Flags.PROTECTED;
+		if( (mods.flags & Flags.STATIC) > 0) flags += Flags.STATIC;
+		if( (mods.flags & Flags.FINAL) > 0) flags += Flags.FINAL;
+		if( (mods.flags & Flags.SYNCHRONIZED) > 0) flags += Flags.SYNCHRONIZED;
+		if( (mods.flags & Flags.VOLATILE) > 0) flags += Flags.VOLATILE;
+		if( (mods.flags & Flags.TRANSIENT) > 0) flags += Flags.TRANSIENT;
+		if( (mods.flags & Flags.NATIVE) > 0) flags += Flags.NATIVE;
+		if( (mods.flags & Flags.INTERFACE) > 0) flags += Flags.INTERFACE;
+		if( (mods.flags & Flags.ABSTRACT) > 0) flags += Flags.ABSTRACT;
+		if( (mods.flags & Flags.STRICTFP) > 0) flags += Flags.STRICTFP;
+		return flags;
+	}
+	
 	private FieldDeclaration convertFieldDeclaration(JCVariableDecl javac) {
 		return convertFieldDeclaration(javac, null);
 	}
@@ -541,6 +565,8 @@ class JavacConverter {
 			commonSettings(res, javac);
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				res.setType(convertToType(newClass.getIdentifier()));
+			} else {
+				res.setName(toName(newClass.clazz));
 			}
 			if (newClass.getClassBody() != null) {
 				res.setAnonymousClassDeclaration(null); // TODO
@@ -746,6 +772,16 @@ class JavacConverter {
 		throw new UnsupportedOperationException("Missing support to convert '" + javac + "' of type " + javac.getClass().getSimpleName());
 	}
 
+	private int countDimensions(JCArrayTypeTree tree) {
+		int ret = 0;
+        JCTree elem = tree;
+        while (elem != null && elem.hasTag(TYPEARRAY)) {
+        	ret++;
+            elem = ((JCArrayTypeTree)elem).elemtype;
+        }
+        return ret;
+	}
+	
 	private SuperMethodInvocation convertSuperMethodInvocation(JCMethodInvocation javac) {
 		SuperMethodInvocation res = this.ast.newSuperMethodInvocation();
 		commonSettings(res, javac);
@@ -846,6 +882,7 @@ class JavacConverter {
 			}
 			VariableDeclarationStatement res = this.ast.newVariableDeclarationStatement(fragment);
 			commonSettings(res, javac);
+			res.setType(convertToType(jcVariableDecl.vartype));
 			return res;
 		}
 		if (javac instanceof JCIf ifStatement) {
