@@ -462,12 +462,17 @@ class JavacConverter {
 		if( javac.getType() instanceof JCArrayTypeTree jcatt && javac.vartype.pos > javac.pos ) {
 			// The array dimensions are part of the variable name
 			if (jcatt.getType() != null) {
+				int dims = countDimensions(jcatt);
 				res.setType(convertToType(jcatt.getType()));
 				if( this.ast.apiLevel < AST.JLS8_INTERNAL) {
-					res.setExtraDimensions(countDimensions(jcatt));
+					res.setExtraDimensions(dims);
 				} else {
 					// TODO might be buggy
-					res.setExtraDimensions(countDimensions(jcatt));
+					for( int i = 0; i < dims; i++ ) {
+						Dimension d = this.ast.newDimension();
+						d.setSourceRange(jcatt.pos, 2);
+						res.extraDimensions().add(d);
+					}
 				}
 			}
 		} else if ( (javac.mods.flags & VARARGS) != 0) {
