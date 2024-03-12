@@ -81,9 +81,9 @@ import org.eclipse.jdt.internal.core.util.CommentRecorderParser;
 import org.eclipse.jdt.internal.core.util.DOMFinder;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-public class CompilationUnitResolver extends Compiler {
+class CompilationUnitResolver extends Compiler {
 
-	static final class ECJCompilationUnitResolver implements ICompilationUnitResolver {
+	private static final class ECJCompilationUnitResolver implements ICompilationUnitResolver {
 
 		@Override
 		public void resolve(String[] sourceFilePaths, String[] encodings, String[] bindingKeys,
