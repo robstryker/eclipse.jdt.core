@@ -149,8 +149,14 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		});
 		JavacUtils.configureJavacContext(context, compilerOptions, javaProject);
 		JavaCompiler javac = JavaCompiler.instance(context);
+		String rawText = null;
+		try {
+			rawText = fileObject.getCharContent(true).toString();
+		} catch( IOException ioe) {
+			// ignore
+		}
 		JCCompilationUnit javacCompilationUnit = javac.parse(fileObject);
-		JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context);
+		JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context, rawText);
 		converter.populateCompilationUnit(res, javacCompilationUnit);
 		attachComments(res, context, fileObject, converter, compilerOptions);
 		ast.setBindingResolver(new JavacBindingResolver(javac, javaProject, context, converter));

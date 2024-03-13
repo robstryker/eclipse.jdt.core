@@ -116,13 +116,19 @@ class JavacConverter {
 	private final JCCompilationUnit javacCompilationUnit;
 	private final Context context;
 	final Map<ASTNode, JCTree> domToJavac = new HashMap<>();
+	private String rawText;
 
-	public JavacConverter(AST ast, JCCompilationUnit javacCompilationUnit, Context context) {
+	public JavacConverter(AST ast, JCCompilationUnit javacCompilationUnit, Context context, String rawText) {
 		this.ast = ast;
 		this.javacCompilationUnit = javacCompilationUnit;
 		this.context = context;
+		this.rawText = rawText;
 	}
 
+	CompilationUnit convertCompilationUnit() {
+		return convertCompilationUnit(this.javacCompilationUnit);
+	}
+	
 	CompilationUnit convertCompilationUnit(JCCompilationUnit javacCompilationUnit) {
 		CompilationUnit res = this.ast.newCompilationUnit();
 		populateCompilationUnit(res, javacCompilationUnit);
@@ -294,7 +300,7 @@ class JavacConverter {
 	        List enumStatements= enumDecl.enumConstants();
 			if (javacClassDecl.getMembers() != null) {
 		        for( Iterator<JCTree> i = javacClassDecl.getMembers().iterator(); i.hasNext(); ) {
-		        	EnumConstantDeclaration dec1 = convertEnumConstantDeclaration(i.next(), parent);
+		        	EnumConstantDeclaration dec1 = convertEnumConstantDeclaration(i.next(), parent, enumDecl);
 		        	if( dec1 != null ) {
 		        		enumStatements.add(dec1);
 		        	}
@@ -304,7 +310,7 @@ class JavacConverter {
 			List bodyDecl = enumDecl.bodyDeclarations();
 			if (javacClassDecl.getMembers() != null) {
 		        for( Iterator<JCTree> i = javacClassDecl.getMembers().iterator(); i.hasNext(); ) {
-		        	BodyDeclaration bd = convertEnumFieldOrMethodDeclaration(i.next(), res);
+		        	BodyDeclaration bd = convertEnumFieldOrMethodDeclaration(i.next(), res, enumDecl);
 		        	if( bd != null ) {
 		        		bodyDecl.add(bd);
 		        	}
@@ -418,6 +424,35 @@ class JavacConverter {
 		}
 		return res;
 	}
+	
+	private String getNodeName(ASTNode node) {
+		if( node instanceof AbstractTypeDeclaration atd) {
+			return atd.getName().toString();
+		}
+		if( node instanceof EnumDeclaration ed) {
+			return ed.getName().toString();
+		}
+		return null;
+	}
+	
+	private String getMethodDeclName(JCMethodDecl javac, ASTNode parent) {
+		String name = javac.getName().toString();
+		boolean javacIsConstructor = Objects.equals(javac.getName(), Names.instance(this.context).init);
+		if( javacIsConstructor) {
+			// sometimes javac mistakes a method with no return as a constructor
+			String parentName = getNodeName(parent);
+			String tmpString1 = this.rawText.substring(javac.pos);
+			int openParen = tmpString1.indexOf("(");
+			if( openParen != -1 ) {
+				String methodName = tmpString1.substring(0, openParen).trim();
+				if( !methodName.equals(parentName)) {
+					return methodName;
+				}
+			}
+			return parentName;
+		}
+		return name;
+	}
 
 	private MethodDeclaration convertMethodDecl(JCMethodDecl javac, ASTNode parent) {
 		MethodDeclaration res = this.ast.newMethodDeclaration();
@@ -427,15 +462,17 @@ class JavacConverter {
 		} else {
 			res.internalSetModifiers(getJLS2ModifiersFlags(javac.mods));
 		}
-		boolean isConstructor = Objects.equals(javac.getName(), Names.instance(this.context).init);
-		res.setConstructor(isConstructor);
-		if (!res.isConstructor()) {
-			res.setName((SimpleName)convert(javac.getName()));
-		} else {
-			if( parent instanceof AbstractTypeDeclaration atd) {
-				res.setName(this.ast.newSimpleName(atd.getName().toString()));
-			}
+		
+		String javacName = javac.getName().toString();
+		String methodDeclName = getMethodDeclName(javac, parent);
+		boolean malformed = !javacName.equals(methodDeclName);
+		if( malformed ) {
+			res.setFlags(res.getFlags() | ASTNode.MALFORMED);
 		}
+		boolean isConstructor = Objects.equals(methodDeclName, Names.instance(this.context).init.toString());
+		
+		res.setConstructor(isConstructor);
+		res.setName(this.ast.newSimpleName(methodDeclName));
 		if (javac.getReturnType() != null) {
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				res.setReturnType2(convertToType(javac.getReturnType()));
@@ -568,6 +605,8 @@ class JavacConverter {
 			commonSettings(res, javac);
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				res.modifiers().addAll(convert(javac.getModifiers()));
+			} else {
+				res.internalSetModifiers(getJLS2ModifiersFlags(javac.mods));
 			}
 			res.setType(convertToType(javac.getType()));
 			return res;
@@ -1422,25 +1461,34 @@ class JavacConverter {
 		}
 	}
 
-	private EnumConstantDeclaration convertEnumConstantDeclaration(JCTree var, ASTNode parent) {
+	private EnumConstantDeclaration convertEnumConstantDeclaration(JCTree var, ASTNode parent, EnumDeclaration enumDecl) {
 		EnumConstantDeclaration enumConstantDeclaration = null;
 		if( var instanceof JCVariableDecl enumConstant ) {
-			if( enumConstant.getType() instanceof JCIdent) {
-				enumConstantDeclaration = new EnumConstantDeclaration(this.ast);
-				final SimpleName typeName = new SimpleName(this.ast);
-				typeName.internalSetIdentifier(enumConstant.getName().toString());
-				int start = enumConstant.getStartPosition();
-				int end = enumConstant.getEndPosition(this.javacCompilationUnit.endPositions);
-				enumConstantDeclaration.setSourceRange(start, end-start);
-				enumConstantDeclaration.setName(typeName);
+			if( enumConstant.getType() instanceof JCIdent jcid) {
+				String o = jcid.getName().toString();
+				String o2 = enumDecl.getName().toString();
+				if( o.equals(o2)) {
+					enumConstantDeclaration = new EnumConstantDeclaration(this.ast);
+					final SimpleName typeName = new SimpleName(this.ast);
+					typeName.internalSetIdentifier(enumConstant.getName().toString());
+					int start = enumConstant.getStartPosition();
+					int end = enumConstant.getEndPosition(this.javacCompilationUnit.endPositions);
+					enumConstantDeclaration.setSourceRange(start, end-start);
+					enumConstantDeclaration.setName(typeName);
+				}
 			}
 		} 
 		return enumConstantDeclaration;
 	}
 
-	private BodyDeclaration convertEnumFieldOrMethodDeclaration(JCTree var, BodyDeclaration parent) {
+	private BodyDeclaration convertEnumFieldOrMethodDeclaration(JCTree var, BodyDeclaration parent, EnumDeclaration enumDecl) {
 		if( var instanceof JCVariableDecl field ) {
-			if( !(field.getType() instanceof JCIdent)) {
+			if( !(field.getType() instanceof JCIdent jcid)) {
+				return convertFieldDeclaration(field);
+			}
+			String o = jcid.getName().toString();
+			String o2 = enumDecl.getName().toString();
+			if( !o.equals(o2)) {
 				return convertFieldDeclaration(field);
 			}
 		}
