@@ -439,7 +439,7 @@ class JavacConverter {
 		String name = javac.getName().toString();
 		boolean javacIsConstructor = Objects.equals(javac.getName(), Names.instance(this.context).init);
 		if( javacIsConstructor) {
-			// sometimes javac mistakes a method with no return as a constructor
+			// sometimes javac mistakes a method with no return type as a constructor
 			String parentName = getNodeName(parent);
 			String tmpString1 = this.rawText.substring(javac.pos);
 			int openParen = tmpString1.indexOf("(");
@@ -465,13 +465,18 @@ class JavacConverter {
 		
 		String javacName = javac.getName().toString();
 		String methodDeclName = getMethodDeclName(javac, parent);
-		boolean malformed = !javacName.equals(methodDeclName);
+		boolean methodDeclNameMatchesInit = Objects.equals(methodDeclName, Names.instance(this.context).init.toString());
+		boolean javacNameMatchesInitAndMethodNameMatchesTypeName = javacName.equals("<init>") && methodDeclName.equals(getNodeName(parent)); 
+		boolean isConstructor = methodDeclNameMatchesInit || javacNameMatchesInitAndMethodNameMatchesTypeName;
+		
+		res.setConstructor(isConstructor);
+		boolean malformed = false;
+		if(isConstructor && !javacNameMatchesInitAndMethodNameMatchesTypeName) {
+			malformed = true;
+		}
 		if( malformed ) {
 			res.setFlags(res.getFlags() | ASTNode.MALFORMED);
 		}
-		boolean isConstructor = Objects.equals(methodDeclName, Names.instance(this.context).init.toString());
-		
-		res.setConstructor(isConstructor);
 		res.setName(this.ast.newSimpleName(methodDeclName));
 		if (javac.getReturnType() != null) {
 			if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
