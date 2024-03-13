@@ -34,6 +34,8 @@ import org.eclipse.core.runtime.ILog;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
+import org.eclipse.jdt.core.dom.rewrite.ImportRewrite.ImportRewriteContext;
+import org.eclipse.jdt.core.dom.rewrite.ImportRewrite.TypeLocation;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.ast.Wildcard;
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
@@ -1293,13 +1295,62 @@ class JavacConverter {
 	}
 
 	private Annotation convert(JCAnnotation javac) {
-		Annotation res = this.ast.newNormalAnnotation();
-		commonSettings(res, javac);
-		res.setTypeName(toName(javac.getAnnotationType()));
-		// TODO member values/arguments
+		// TODO this needs more work, see below
+		String asString = javac.toString();
+		Annotation res = null;
+		if( !asString.contains("(")) {
+			res = this.ast.newMarkerAnnotation();
+			commonSettings(res, javac);
+			res.setTypeName(toName(javac.getAnnotationType()));
+		} else {
+			res = this.ast.newNormalAnnotation();
+			commonSettings(res, javac);
+			res.setTypeName(toName(javac.getAnnotationType()));
+		}
 		return res;
 	}
+//
+//	public Annotation addAnnotation(IAnnotationBinding annotation, AST ast, ImportRewriteContext context) {
+//		Type type = addImport(annotation.getAnnotationType(), ast, context, TypeLocation.OTHER);
+//		Name name;
+//		if (type instanceof SimpleType) {
+//			SimpleType simpleType = (SimpleType) type;
+//			name = simpleType.getName();
+//			// cut 'name' loose from its parent, so that it can be reused
+//			simpleType.setName(ast.newName("a")); //$NON-NLS-1$
+//		} else {
+//			name = ast.newName("invalid"); //$NON-NLS-1$
+//		}
+//
+//		IMemberValuePairBinding[] mvps= annotation.getDeclaredMemberValuePairs();
+//		if (mvps.length == 0) {
+//			MarkerAnnotation result = ast.newMarkerAnnotation();
+//			result.setTypeName(name);
+//			return result;
+//		} else if (mvps.length == 1 && "value".equals(mvps[0].getName())) { //$NON-NLS-1$
+//			SingleMemberAnnotation result= ast.newSingleMemberAnnotation();
+//			result.setTypeName(name);
+//			Object value = mvps[0].getValue();
+//			if (value != null)
+//				result.setValue(addAnnotation(ast, value, context));
+//			return result;
+//		} else {
+//			NormalAnnotation result = ast.newNormalAnnotation();
+//			result.setTypeName(name);
+//			for (int i= 0; i < mvps.length; i++) {
+//				IMemberValuePairBinding mvp = mvps[i];
+//				MemberValuePair mvpNode = ast.newMemberValuePair();
+//				mvpNode.setName(ast.newSimpleName(mvp.getName()));
+//				Object value = mvp.getValue();
+//				if (value != null)
+//					mvpNode.setValue(addAnnotation(ast, value, context));
+//				result.values().add(mvpNode);
+//			}
+//			return result;
+//		}
+//	}
 
+	
 	private Modifier convert(javax.lang.model.element.Modifier javac) {
 		Modifier res = this.ast.newModifier(switch (javac) {
 			case PUBLIC -> ModifierKeyword.PUBLIC_KEYWORD;
