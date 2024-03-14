@@ -353,14 +353,22 @@ class JavacConverter {
 	}
 
 	private TypeParameter convert(JCTypeParameter typeParameter) {
-		final TypeParameter typeParameter2 = new TypeParameter(this.ast);
+		final TypeParameter ret = new TypeParameter(this.ast);
 		final SimpleName simpleName = new SimpleName(this.ast);
 		simpleName.internalSetIdentifier(typeParameter.getName().toString());
 		int start = typeParameter.pos;
 		int end = typeParameter.pos + typeParameter.getName().length();
 		simpleName.setSourceRange(start, end - start + 1);
-		typeParameter2.setName(simpleName);
+		ret.setName(simpleName);
 		int annotationsStart = start;
+		List bounds = typeParameter.bounds;
+		Iterator i = bounds.iterator();
+		while(i.hasNext()) {
+			JCTree t = (JCTree)i.next();
+			Type type = convertToType(t);
+			ret.typeBounds().add(type);
+			end = type.getStartPosition() + type.getLength() - 1;
+		}
 //		org.eclipse.jdt.internal.compiler.ast.Annotation[] annotations = typeParameter.annotations;
 //		if (annotations != null) {
 //			if (annotations[0] != null)
@@ -385,13 +393,13 @@ class JavacConverter {
 //		}
 //		start = annotationsStart < typeParameter.declarationSourceStart ? annotationsStart : typeParameter.declarationSourceStart;
 //		end = retrieveClosingAngleBracketPosition(end);
-		typeParameter2.setSourceRange(start, end - start + 1);
 //		if (this.resolveBindings) {
 //			recordName(simpleName, typeParameter);
 //			recordNodes(typeParameter2, typeParameter);
 //			typeParameter2.resolveBinding();
 //		}
-		return typeParameter2;
+		ret.setSourceRange(start, end - start + 1);
+		return ret;
 	}
 
 	private ASTNode convertBodyDeclaration(JCTree tree, ASTNode parent) {
