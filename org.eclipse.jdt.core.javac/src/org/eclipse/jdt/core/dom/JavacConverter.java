@@ -34,10 +34,6 @@ import org.eclipse.core.runtime.ILog;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
-import org.eclipse.jdt.core.dom.rewrite.ImportRewrite.ImportRewriteContext;
-import org.eclipse.jdt.core.dom.rewrite.ImportRewrite.TypeLocation;
-import org.eclipse.jdt.internal.compiler.ast.TypeReference;
-import org.eclipse.jdt.internal.compiler.ast.Wildcard;
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
@@ -895,7 +891,7 @@ class JavacConverter {
 				.forEach(res.parameters()::add);
 			res.setBody(
 					jcLambda.getBody() instanceof JCExpression expr ? convertExpression(expr) :
-					jcLambda.getBody() instanceof JCStatement stmt ? convertStatement(stmt) :
+					jcLambda.getBody() instanceof JCStatement stmt ? convertStatement(stmt, res) :
 					null);
 			// TODO set parenthesis looking at the next non-whitespace char after the last parameter
 			return res;
@@ -984,10 +980,6 @@ class JavacConverter {
 		throw new UnsupportedOperationException("Not supported yet " + literal + "\n of type" + literal.getClass().getName());
 	}
 
-	private Statement convertStatement(JCStatement javac) {
-		return convertStatement(javac, null);
-	}
-	
 	private Statement convertStatement(JCStatement javac, ASTNode parent) {
 		if (javac instanceof JCReturn returnStatement) {
 			ReturnStatement res = this.ast.newReturnStatement();
@@ -1014,7 +1006,7 @@ class JavacConverter {
 				if (jcError.getErrorTrees().size() == 1) {
 					JCTree tree = jcError.getErrorTrees().get(0);
 					if (tree instanceof JCStatement nestedStmt) {
-						return convertStatement(nestedStmt);
+						return convertStatement(nestedStmt, parent);
 					}
 				} else {
 					Block substitute = this.ast.newBlock();
@@ -1060,10 +1052,17 @@ class JavacConverter {
 		if (javac instanceof JCForLoop jcForLoop) {
 			ForStatement res = this.ast.newForStatement();
 			commonSettings(res, javac);
-			res.setBody(convertStatement(jcForLoop.getStatement()));
-			jcForLoop.getInitializer().stream().map(this::convertStatementToExpression).forEach(res.initializers()::add);
+			res.setBody(convertStatement(jcForLoop.getStatement(), res));
+			Iterator initializerIt = jcForLoop.getInitializer().iterator();
+			while(initializerIt.hasNext()) {
+				res.initializers().add(convertStatementToExpression((JCStatement)initializerIt.next(), res));
+			}
 			res.setExpression(convertExpression(jcForLoop.getCondition()));
-			jcForLoop.getUpdate().stream().map(this::convertStatementToExpression).forEach(res.updaters()::add);
+
+			Iterator updateIt = jcForLoop.getUpdate().iterator();
+			while(updateIt.hasNext()) {
+				res.updaters().add(convertStatementToExpression((JCStatement)updateIt.next(), res));
+			}
 			return res;
 		}
 		if (javac instanceof JCEnhancedForLoop jcEnhancedForLoop) {
@@ -1071,7 +1070,7 @@ class JavacConverter {
 			commonSettings(res, javac);
 			res.setParameter((SingleVariableDeclaration)convertVariableDeclaration(jcEnhancedForLoop.getVariable()));
 			res.setExpression(convertExpression(jcEnhancedForLoop.getExpression()));
-			res.setBody(convertStatement(jcEnhancedForLoop.getStatement()));
+			res.setBody(convertStatement(jcEnhancedForLoop.getStatement(), res));
 			return res;
 		}
 		if (javac instanceof JCBreak jcBreak) {
@@ -1092,7 +1091,7 @@ class JavacConverter {
 					stmts.add(switchCase);
 					stmts.addAll(switchCase.getStatements());
 					return stmts.stream();
-				}).map(this::convertStatement)
+				}).map(x -> convertStatement(x, res))
 				.forEach(res.statements()::add);
 			return res;
 		}
@@ -1108,14 +1107,14 @@ class JavacConverter {
 			WhileStatement res = this.ast.newWhileStatement();
 			commonSettings(res, javac);
 			res.setExpression(convertExpression(jcWhile.getCondition()));
-			res.setBody(convertStatement(jcWhile.getStatement()));
+			res.setBody(convertStatement(jcWhile.getStatement(), res));
 			return res;
 		}
 		if (javac instanceof JCDoWhileLoop jcDoWhile) {
 			DoStatement res = this.ast.newDoStatement();
 			commonSettings(res, javac);
 			res.setExpression(convertExpression(jcDoWhile.getCondition()));
-			res.setBody(convertStatement(jcDoWhile.getStatement()));
+			res.setBody(convertStatement(jcDoWhile.getStatement(), res));
 			return res;
 		}
 		if (javac instanceof JCYield jcYield) {
@@ -1152,11 +1151,11 @@ class JavacConverter {
 		throw new UnsupportedOperationException("Missing support to convert " + javac + "of type " + javac.getClass().getName());
 	}
 
-	private Expression convertStatementToExpression(JCStatement javac) {
+	private Expression convertStatementToExpression(JCStatement javac, ASTNode parent) {
 		if (javac instanceof JCExpressionStatement jcExpressionStatement) {
 			return convertExpression(jcExpressionStatement.getExpression());
 		}
-		Statement javacStatement = convertStatement(javac);
+		Statement javacStatement = convertStatement(javac, parent);
 		if (javacStatement instanceof VariableDeclarationStatement decl && decl.fragments().size() == 1) {
 			javacStatement.delete();
 			VariableDeclarationFragment fragment = (VariableDeclarationFragment)decl.fragments().get(0);
@@ -1173,7 +1172,7 @@ class JavacConverter {
 		commonSettings(res, javac);
 		if (javac.getStatements() != null) {
 			for( Iterator i = javac.getStatements().iterator(); i.hasNext();) {
-				Statement s = convertStatement((JCStatement)i.next());
+				Statement s = convertStatement((JCStatement)i.next(), res);
 				if( s != null ) {
 					res.statements().add(s);
 				}
@@ -1216,10 +1215,10 @@ class JavacConverter {
 			res.setExpression(convertExpression(javac.getCondition()));
 		}
 		if (javac.getThenStatement() != null) {
-			res.setThenStatement(convertStatement(javac.getThenStatement()));
+			res.setThenStatement(convertStatement(javac.getThenStatement(), res));
 		}
 		if (javac.getElseStatement() != null) {
-			res.setElseStatement(convertStatement(javac.getElseStatement()));
+			res.setElseStatement(convertStatement(javac.getElseStatement(), res));
 		}
 		return res;
 	}
