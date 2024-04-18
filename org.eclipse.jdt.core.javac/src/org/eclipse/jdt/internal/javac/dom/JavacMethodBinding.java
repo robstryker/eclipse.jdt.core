@@ -36,6 +36,7 @@ import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
+import com.sun.tools.javac.code.Type.JCNoType;
 
 public class JavacMethodBinding implements IMethodBinding {
 
@@ -123,30 +124,48 @@ public class JavacMethodBinding implements IMethodBinding {
 	@Override
 	public String getKey() {
 		StringBuilder builder = new StringBuilder();
-		getKey(builder, this.methodSymbol);
+		getKey(builder, this.methodSymbol, this.resolver);
 		return builder.toString();
 	}
 
-	static void getKey(StringBuilder builder, MethodSymbol methodSymbol) {
+	static void getKey(StringBuilder builder, MethodSymbol methodSymbol, JavacBindingResolver resolver) {
 		Symbol ownerSymbol = methodSymbol.owner;
 		while (ownerSymbol != null && !(ownerSymbol instanceof TypeSymbol)) {
 			ownerSymbol = ownerSymbol.owner;
 		}
 		if (ownerSymbol instanceof TypeSymbol ownerTypeSymbol) {
-			builder.append(ownerTypeSymbol.name);
+			ITypeBinding ownerTypeBinding = new JavacTypeBinding(ownerTypeSymbol, resolver, null);
+			builder.append(ownerTypeBinding.getKey());
 		} else {
 			throw new IllegalArgumentException("Method has no owning class");
 		}
 		builder.append('.');
-		// TODO: what is a selector? why is it added?
-		for (var typeParam : methodSymbol.getTypeParameters()) {
-			builder.append(typeParam.getQualifiedName());
+		if (!methodSymbol.isConstructor()) {
+			builder.append(methodSymbol.getSimpleName());
 		}
+		if (!methodSymbol.getTypeParameters().isEmpty()) {
+			builder.append('<');
+			for (var typeParam : methodSymbol.getTypeParameters()) {
+				JavacTypeVariableBinding typeVarBinding = new JavacTypeVariableBinding(typeParam, resolver);
+				builder.append(typeVarBinding.getKey());
+			}
+			builder.append('>');
+		}
+		builder.append('(');
 		for (var param : methodSymbol.getParameters()) {
-			builder.append(param.getQualifiedName());
+			JavacTypeBinding.getKey(builder, param.type, false);
 		}
-		for (var thrownException : methodSymbol.getThrownTypes()) {
-			builder.append(thrownException.tsym.getQualifiedName());
+		builder.append(')');
+		if (!(methodSymbol.getReturnType() instanceof JCNoType)) {
+			JavacTypeBinding.getKey(builder, methodSymbol.getReturnType(), false);
+		}
+		if (
+				methodSymbol.getThrownTypes().stream().anyMatch(a -> !a.getParameterTypes().isEmpty())
+			) {
+			builder.append('^');
+			for (var thrownException : methodSymbol.getThrownTypes()) {
+				builder.append(thrownException.tsym.getQualifiedName());
+			}
 		}
 	}
 

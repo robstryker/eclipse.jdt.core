@@ -120,9 +120,25 @@ public class JavacTypeBinding implements ITypeBinding {
 			getKey(builder, arrayType.elemtype, isLeaf);
 			return;
 		}
+		if (typeToBuild instanceof Type.WildcardType wildcardType) {
+			if (wildcardType.isUnbound()) {
+				builder.append('*');
+			} else if (wildcardType.isExtendsBound()) {
+				builder.append('+');
+				getKey(builder, wildcardType.getExtendsBound(), isLeaf);
+			} else if (wildcardType.isSuperBound()) {
+				builder.append('-');
+				getKey(builder, wildcardType.getSuperBound(), isLeaf);
+			}
+			return;
+		}
 		if (typeToBuild.isReference()) {
 			if (!isLeaf) {
-				builder.append('L');
+				if (typeToBuild.tsym instanceof Symbol.TypeVariableSymbol) {
+					builder.append('T');
+				} else {
+					builder.append('L');
+				}
 			}
 			builder.append(typeToBuild.asElement().getQualifiedName().toString().replace('.', '/'));
 			if (typeToBuild.isParameterized()) {
