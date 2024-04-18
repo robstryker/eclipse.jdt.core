@@ -96,7 +96,7 @@ public class JavacVariableBinding implements IVariableBinding {
 			}
 			return builder.toString();
 		} else if (this.variableSymbol.owner instanceof MethodSymbol methodSymbol) {
-			JavacMethodBinding.getKey(builder, methodSymbol);
+			JavacMethodBinding.getKey(builder, methodSymbol, this.resolver);
 			builder.append('#');
 			builder.append(this.variableSymbol.name);
 			// FIXME: is it possible for the javac AST to contain multiple definitions of the same variable?
