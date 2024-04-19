@@ -134,8 +134,7 @@ public class JavacMethodBinding implements IMethodBinding {
 			ownerSymbol = ownerSymbol.owner;
 		}
 		if (ownerSymbol instanceof TypeSymbol ownerTypeSymbol) {
-			ITypeBinding ownerTypeBinding = new JavacTypeBinding(ownerTypeSymbol, resolver, null);
-			builder.append(ownerTypeBinding.getKey());
+			JavacTypeBinding.getKey(builder, ownerTypeSymbol.type, false, true);
 		} else {
 			throw new IllegalArgumentException("Method has no owning class");
 		}
@@ -146,7 +145,7 @@ public class JavacMethodBinding implements IMethodBinding {
 		if (!methodSymbol.getTypeParameters().isEmpty()) {
 			builder.append('<');
 			for (var typeParam : methodSymbol.getTypeParameters()) {
-				JavacTypeVariableBinding typeVarBinding = new JavacTypeVariableBinding(typeParam, resolver);
+				JavacTypeVariableBinding typeVarBinding = new JavacTypeVariableBinding(typeParam);
 				builder.append(typeVarBinding.getKey());
 			}
 			builder.append('>');
