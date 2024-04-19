@@ -36,6 +36,7 @@ import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Type;
+import javax.lang.model.type.TypeKind;
 import com.sun.tools.javac.code.Type.ArrayType;
 import com.sun.tools.javac.code.Type.TypeVar;
 import com.sun.tools.javac.code.Type.WildcardType;
@@ -119,6 +120,9 @@ public class JavacTypeBinding implements ITypeBinding {
 	}
 
 	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean erased) {
+		if (typeToBuild instanceof Type.JCNoType) {
+			return;
+		}
 		if (typeToBuild instanceof ArrayType arrayType) {
 			builder.append('[');
 			getKey(builder, arrayType.elemtype, isLeaf);
