@@ -28,21 +28,24 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.JavacBindingResolver;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.codegen.ConstantPool;
 
 import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
+import com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Type;
 import javax.lang.model.type.TypeKind;
 import com.sun.tools.javac.code.Type.ArrayType;
+import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.TypeVar;
 import com.sun.tools.javac.code.Type.WildcardType;
-import com.sun.tools.javac.code.Types.FunctionDescriptorLookupError;
 import com.sun.tools.javac.code.Types;
-import com.sun.tools.javac.code.Kinds;
+import com.sun.tools.javac.code.Types.FunctionDescriptorLookupError;
 
 public class JavacTypeBinding implements ITypeBinding {
 
@@ -114,8 +117,11 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public String getKey() {
+		return getKey(this.typeSymbol.type);
+	}
+	public String getKey(Type t) {
 		StringBuilder builder = new StringBuilder();
-		getKey(builder, this.typeSymbol.type, false);
+		getKey(builder, t, false);
 		return builder.toString();
 	}
 
@@ -347,9 +353,20 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding[] getInterfaces() {
-		return this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getInterfaces() != null ?
-			classSymbol.getInterfaces().map(t -> new JavacTypeBinding(t, this.resolver, null)).toArray(ITypeBinding[]::new) :
-			null;
+		if (this.typeSymbol instanceof final TypeVariableSymbol typeVarSymb && typeVarSymb.type instanceof TypeVar tv) {
+			Type t = tv.getUpperBound();
+			if( t.tsym instanceof ClassSymbol cs) {
+				JavacTypeBinding jtb = new JavacTypeBinding(t, this.resolver, null);
+				if( jtb.isInterface()) {
+					return new ITypeBinding[] {jtb};
+				}
+			}
+		}
+
+		if( this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getInterfaces() != null ) {
+			return 	classSymbol.getInterfaces().map(t -> new JavacTypeBinding(t, this.resolver, null)).toArray(ITypeBinding[]::new);
+		}
+		return new ITypeBinding[0];
 	}
 
 	@Override
@@ -376,9 +393,29 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding getSuperclass() {
+		if (this.typeSymbol instanceof final TypeVariableSymbol classSymbol && classSymbol.type instanceof TypeVar tv) {
+			Type t = tv.getUpperBound();
+			JavacTypeBinding possible = new JavacTypeBinding(t.tsym, this.resolver, null);
+			if( !possible.isInterface()) {
+				return possible;
+			}
+			if( t instanceof ClassType ct ) {
+				// we need to return java.lang.object
+				ClassType working = ct;
+				while( working != null ) {
+					Type wt = working.supertype_field;
+					String sig = getKey(wt);
+					if( new String(ConstantPool.JavaLangObjectSignature).equals(sig)) {
+						return new JavacTypeBinding(wt.tsym, this.resolver, null);
+					}
+					working = wt instanceof ClassType ? (ClassType)wt : null;
+				}
+			}
+		}
 		if (this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getSuperclass() != null && classSymbol.getSuperclass().tsym != null) {
 			return new JavacTypeBinding(classSymbol.getSuperclass().tsym, this.resolver, null);
 		}
+		
 		return null;
 	}
 
