@@ -118,7 +118,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		return builder.toString();
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean erased) {
 		if (typeToBuild instanceof ArrayType arrayType) {
 			builder.append('[');
 			getKey(builder, arrayType.elemtype, isLeaf);
@@ -145,7 +145,7 @@ public class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			builder.append(typeToBuild.asElement().getQualifiedName().toString().replace('.', '/'));
-			if (typeToBuild.isParameterized()) {
+			if (typeToBuild.isParameterized() && !erased) {
 				builder.append('<');
 				for (var typeArgument : typeToBuild.getTypeArguments()) {
 					getKey(builder, typeArgument, false);
@@ -175,6 +175,10 @@ public class JavacTypeBinding implements ITypeBinding {
 			}
 		}
 		throw new UnsupportedOperationException("Unimplemented method 'getKey'");
+	}
+
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
+		getKey(builder, typeToBuild, isLeaf, false);
 	}
 
 	@Override

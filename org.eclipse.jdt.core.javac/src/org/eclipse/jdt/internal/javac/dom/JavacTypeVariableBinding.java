@@ -1,7 +1,5 @@
 package org.eclipse.jdt.internal.javac.dom;
 
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-
 import com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
 
 /**
@@ -10,20 +8,22 @@ import com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
  */
 class JavacTypeVariableBinding {
 	private TypeVariableSymbol typeVar;
-	private JavacBindingResolver resolver;
 
-	JavacTypeVariableBinding(TypeVariableSymbol typeVar, JavacBindingResolver resolver) {
+	JavacTypeVariableBinding(TypeVariableSymbol typeVar) {
 		this.typeVar = typeVar;
-		this.resolver = resolver;
 	}
 
 	public String getKey() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(typeVar.getSimpleName());
 		builder.append(':');
+		boolean prependColon = typeVar.getBounds().size() > 1
+				|| (typeVar.getBounds().size() > 0 && typeVar.getBounds().get(0).isInterface());
 		for (var bound : typeVar.getBounds()) {
-			JavacTypeBinding boundTypeBinding = new JavacTypeBinding(bound.tsym, this.resolver, null);
-			builder.append(boundTypeBinding.getKey());
+			if (prependColon) {
+				builder.append(":");
+			}
+			JavacTypeBinding.getKey(builder, bound, false);
 		}
 		return builder.toString();
 	}
