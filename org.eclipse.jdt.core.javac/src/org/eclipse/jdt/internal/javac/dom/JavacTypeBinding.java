@@ -415,7 +415,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		if (this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getSuperclass() != null && classSymbol.getSuperclass().tsym != null) {
 			return new JavacTypeBinding(classSymbol.getSuperclass().tsym, this.resolver, null);
 		}
-		
+
 		return null;
 	}
 
