@@ -206,7 +206,7 @@ public class JavacMethodBinding implements IMethodBinding {
 		Symbol parentSymbol = this.methodSymbol.owner;
 		do {
 			if (parentSymbol instanceof ClassSymbol clazz) {
-				return new JavacTypeBinding(clazz, this.resolver, null);
+				return new JavacTypeBinding(clazz.type, this.resolver, null);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
@@ -272,7 +272,7 @@ public class JavacMethodBinding implements IMethodBinding {
 	@Override
 	public ITypeBinding[] getTypeParameters() {
 		return this.methodSymbol.getTypeParameters().stream()
-				.map(symbol -> new JavacTypeBinding(symbol, this.resolver, null))
+				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver, null))
 				.toArray(ITypeBinding[]::new);
 	}
 
@@ -294,7 +294,7 @@ public class JavacMethodBinding implements IMethodBinding {
 	@Override
 	public ITypeBinding[] getTypeArguments() {
 		return this.typeArguments.stream()
-				.map(symbol -> new JavacTypeBinding(symbol, this.resolver, null))
+				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver, null))
 				.toArray(ITypeBinding[]::new);
 	}
 

@@ -76,7 +76,7 @@ public class JavacVariableBinding implements IVariableBinding {
 			return null;
 		}
 		if (this.variableSymbol.owner instanceof TypeSymbol parentType) {//field
-			return new JavacTypeBinding(parentType, this.resolver, null).getJavaElement().getField(this.variableSymbol.name.toString());
+			return new JavacTypeBinding(parentType.type, this.resolver, null).getJavaElement().getField(this.variableSymbol.name.toString());
 		}
 		return null;
 	}
@@ -138,7 +138,7 @@ public class JavacVariableBinding implements IVariableBinding {
 		Symbol parentSymbol = this.variableSymbol.owner;
 		do {
 			if (parentSymbol instanceof ClassSymbol clazz) {
-				return new JavacTypeBinding(clazz, this.resolver, null);
+				return new JavacTypeBinding(clazz.type, this.resolver, null);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);

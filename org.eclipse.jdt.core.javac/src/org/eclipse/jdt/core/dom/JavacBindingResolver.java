@@ -139,10 +139,10 @@ public class JavacBindingResolver extends BindingResolver {
 		JCTree jcTree = this.converter.domToJavac.get(type);
 		final java.util.List<TypeSymbol> typeArguments = getTypeArguments(type);
 		if (jcTree instanceof JCIdent ident && ident.sym instanceof TypeSymbol typeSymbol) {
-			return new JavacTypeBinding(typeSymbol, this, typeArguments);
+			return new JavacTypeBinding(ident.type, this, typeArguments);
 		}
 		if (jcTree instanceof JCFieldAccess access && access.sym instanceof TypeSymbol typeSymbol) {
-			return new JavacTypeBinding(typeSymbol, this, typeArguments);
+			return new JavacTypeBinding(access.type, this, typeArguments);
 		}
 		if (jcTree instanceof JCPrimitiveTypeTree primitive) {
 			return new JavacTypeBinding(primitive.type, this, typeArguments);
@@ -167,7 +167,7 @@ public class JavacBindingResolver extends BindingResolver {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(type);
 		if (javacNode instanceof JCClassDecl jcClassDecl) {
-			return new JavacTypeBinding(jcClassDecl.sym, this, null);
+			return new JavacTypeBinding(jcClassDecl.type, this, null);
 		}
 		return null;
 	}
@@ -177,16 +177,19 @@ public class JavacBindingResolver extends BindingResolver {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(enumDecl);
 		if (javacNode instanceof JCClassDecl jcClassDecl) {
-			return new JavacTypeBinding(jcClassDecl.sym, this, null);
+			return new JavacTypeBinding(jcClassDecl.type, this, null);
 		}
 		return null;
 	}
 
+	/**
+	 * TODO: we should avoid using this if possible
+	 */
 	public IBinding getBinding(final Symbol owner, final java.util.List<TypeSymbol> typeArguments) {
 		if (owner instanceof final PackageSymbol other) {
 			return new JavacPackageBinding(other, this);
 		} else if (owner instanceof final TypeSymbol other) {
-			return new JavacTypeBinding(other, this, typeArguments);
+			return new JavacTypeBinding(other.type, this, typeArguments);
 		} else if (owner instanceof final MethodSymbol other) {
 			return new JavacMethodBinding(other, this, typeArguments);
 		} else if (owner instanceof final VarSymbol other) {
@@ -356,7 +359,7 @@ public class JavacBindingResolver extends BindingResolver {
 		if (attribute instanceof Attribute.Constant constant) {
 			return constant.value;
 		} else if (attribute instanceof Attribute.Class clazz) {
-			return new JavacTypeBinding(clazz.classType.tsym, this, null);
+			return new JavacTypeBinding(clazz.classType, this, null);
 		} else if (attribute instanceof Attribute.Enum enumm) {
 			return new JavacVariableBinding(enumm.value, this);
 		} else if (attribute instanceof Attribute.Array array) {
@@ -365,7 +368,7 @@ public class JavacBindingResolver extends BindingResolver {
 						if (attribute instanceof Attribute.Constant constant) {
 							return constant.value;
 						} else if (attribute instanceof Attribute.Class clazz) {
-							return new JavacTypeBinding(clazz.classType.tsym, this, null);
+							return new JavacTypeBinding(clazz.classType, this, null);
 						} else if (attribute instanceof Attribute.Enum enumerable) {
 							return new JavacVariableBinding(enumerable.value, this);
 						}
