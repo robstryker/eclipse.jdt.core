@@ -206,7 +206,7 @@ public class JavacMethodBinding implements IMethodBinding {
 		Symbol parentSymbol = this.methodSymbol.owner;
 		do {
 			if (parentSymbol instanceof ClassSymbol clazz) {
-				return new JavacTypeBinding(clazz.type, this.resolver, null);
+				return new JavacTypeBinding(clazz.type, this.resolver);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
@@ -243,18 +243,18 @@ public class JavacMethodBinding implements IMethodBinding {
 	public ITypeBinding[] getParameterTypes() {
 		return this.methodSymbol.params().stream()
 			.map(param -> param.type)
-			.map(type -> new JavacTypeBinding(type, this.resolver,  /* TODO */ null))
+			.map(type -> new JavacTypeBinding(type, this.resolver))
 			.toArray(ITypeBinding[]::new);
 	}
 
 	@Override
 	public ITypeBinding getDeclaredReceiverType() {
-		return new JavacTypeBinding(this.methodSymbol.getReceiverType(), this.resolver, /* TODO */ null);
+		return new JavacTypeBinding(this.methodSymbol.getReceiverType(), this.resolver);
 	}
 
 	@Override
 	public ITypeBinding getReturnType() {
-		return new JavacTypeBinding(this.methodSymbol.getReturnType(), this.resolver, /* TODO */ null);
+		return new JavacTypeBinding(this.methodSymbol.getReturnType(), this.resolver);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -272,7 +272,7 @@ public class JavacMethodBinding implements IMethodBinding {
 	@Override
 	public ITypeBinding[] getTypeParameters() {
 		return this.methodSymbol.getTypeParameters().stream()
-				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver, null))
+				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver))
 				.toArray(ITypeBinding[]::new);
 	}
 
@@ -294,7 +294,7 @@ public class JavacMethodBinding implements IMethodBinding {
 	@Override
 	public ITypeBinding[] getTypeArguments() {
 		return this.typeArguments.stream()
-				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver, null))
+				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver))
 				.toArray(ITypeBinding[]::new);
 	}
 

@@ -55,19 +55,17 @@ public class JavacTypeBinding implements ITypeBinding {
 	final JavacBindingResolver resolver;
 	public final TypeSymbol typeSymbol;
 	private final Types types;
-	private final List<TypeSymbol> typeArguments;
 	private final Type type;
 
-	public JavacTypeBinding(final Type type, final JavacBindingResolver resolver, final List<TypeSymbol> typeArguments) {
-		this(type, type.tsym, resolver, typeArguments);
+	public JavacTypeBinding(final Type type, final JavacBindingResolver resolver) {
+		this(type, type.tsym, resolver);
 	}
 
-	private JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, JavacBindingResolver resolver, final List<TypeSymbol> typeArguments) {
+	private JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, JavacBindingResolver resolver) {
 		this.type = type;
 		this.typeSymbol = typeSymbol;
 		this.resolver = resolver;
 		this.types = Types.instance(this.resolver.context);
-		this.typeArguments = typeArguments;
 	}
 
 	@Override
@@ -201,7 +199,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		for (int i = 0; i < dimension; i++) {
 			type = this.types.makeArrayType(type);
 		}
-		return new JavacTypeBinding(type, this.resolver, this.typeArguments);
+		return new JavacTypeBinding(type, this.resolver);
 	}
 
 	@Override
@@ -244,7 +242,7 @@ public class JavacTypeBinding implements ITypeBinding {
 	@Override
 	public ITypeBinding getComponentType() {
 		if (this.type instanceof ArrayType arrayType) {
-			return new JavacTypeBinding(arrayType.elemtype, this.resolver, null);
+			return new JavacTypeBinding(arrayType.elemtype, this.resolver);
 		}
 		return null;
 	}
@@ -285,7 +283,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		return StreamSupport.stream(this.typeSymbol.members().getSymbols().spliterator(), false)
 			.filter(TypeSymbol.class::isInstance)
 			.map(TypeSymbol.class::cast)
-			.map(sym -> new JavacTypeBinding(sym.type, this.resolver, null))
+			.map(sym -> new JavacTypeBinding(sym.type, this.resolver))
 			.toArray(ITypeBinding[]::new);
 	}
 
@@ -294,7 +292,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		Symbol parentSymbol = this.typeSymbol.owner;
 		do {
 			if (parentSymbol instanceof final ClassSymbol clazz) {
-				return new JavacTypeBinding(clazz.type, this.resolver, null);
+				return new JavacTypeBinding(clazz.type, this.resolver);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
@@ -328,12 +326,12 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding getElementType() {
-		return new JavacTypeBinding(this.types.elemtype(this.type), this.resolver, null);
+		return new JavacTypeBinding(this.types.elemtype(this.type), this.resolver);
 	}
 
 	@Override
 	public ITypeBinding getErasure() {
-		return new JavacTypeBinding(this.types.erasure(this.typeSymbol.type), this.resolver, null);
+		return new JavacTypeBinding(this.types.erasure(this.type), this.resolver);
 	}
 
 	@Override
@@ -354,7 +352,7 @@ public class JavacTypeBinding implements ITypeBinding {
 			List<Type> bounds = typeVarSymb.getBounds();
 			Type t = tv.getUpperBound();
 			if( t.tsym instanceof ClassSymbol cs) {
-				JavacTypeBinding jtb = new JavacTypeBinding(t, this.resolver, null);
+				JavacTypeBinding jtb = new JavacTypeBinding(t, this.resolver);
 				if( jtb.isInterface()) {
 					return new ITypeBinding[] {jtb};
 				}
@@ -362,7 +360,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		}
 
 		if( this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getInterfaces() != null ) {
-			return 	classSymbol.getInterfaces().map(t -> new JavacTypeBinding(t, this.resolver, null)).toArray(ITypeBinding[]::new);
+			return 	classSymbol.getInterfaces().map(t -> new JavacTypeBinding(t, this.resolver)).toArray(ITypeBinding[]::new);
 		}
 		return new ITypeBinding[0];
 	}
@@ -393,7 +391,7 @@ public class JavacTypeBinding implements ITypeBinding {
 	public ITypeBinding getSuperclass() {
 		if (this.typeSymbol instanceof TypeVariableSymbol && this.type instanceof TypeVar tv) {
 			Type t = tv.getUpperBound();
-			JavacTypeBinding possible = new JavacTypeBinding(t, this.resolver, null);
+			JavacTypeBinding possible = new JavacTypeBinding(t, this.resolver);
 			if( !possible.isInterface()) {
 				return possible;
 			}
@@ -404,14 +402,14 @@ public class JavacTypeBinding implements ITypeBinding {
 					Type wt = working.supertype_field;
 					String sig = getKey(wt);
 					if( new String(ConstantPool.JavaLangObjectSignature).equals(sig)) {
-						return new JavacTypeBinding(wt, this.resolver, null);
+						return new JavacTypeBinding(wt, this.resolver);
 					}
 					working = wt instanceof ClassType ? (ClassType)wt : null;
 				}
 			}
 		}
 		if (this.typeSymbol instanceof final ClassSymbol classSymbol && classSymbol.getSuperclass() != null && classSymbol.getSuperclass().tsym != null) {
-			return new JavacTypeBinding(classSymbol.getSuperclass(), this.resolver, null);
+			return new JavacTypeBinding(classSymbol.getSuperclass(), this.resolver);
 		}
 
 		return null;
@@ -426,18 +424,13 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding[] getTypeArguments() {
-		if (this.typeArguments == null) {
-			if (this.type != this.typeSymbol.type) {
-				return this.type.getTypeArguments()
-						.stream()
-						.map(typeArg -> new JavacTypeBinding(typeArg, this.resolver, null))
-						.toArray(ITypeBinding[]::new);
-			}
+		if (this.type.getTypeArguments().isEmpty()) {
 			return NO_TYPE_ARGUMENTS;
 		}
-		return this.typeArguments.stream()
-			.map(typeArgument -> this.resolver.getBinding(typeArgument, null))
-			.toArray(ITypeBinding[]::new);
+		return this.type.getTypeArguments()
+				.stream()
+				.map(typeArg -> new JavacTypeBinding(typeArg, this.resolver))
+				.toArray(ITypeBinding[]::new);
 	}
 
 	@Override
@@ -446,7 +439,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		if (upperBound == null) {
 			return new ITypeBinding[0];
 		}
-		return new ITypeBinding[] { new JavacTypeBinding(upperBound, this.resolver, null) };
+		return new ITypeBinding[] { new JavacTypeBinding(upperBound, this.resolver) };
 	}
 
 	@Override
@@ -457,7 +450,7 @@ public class JavacTypeBinding implements ITypeBinding {
 	@Override
 	public ITypeBinding[] getTypeParameters() {
 		return this.typeSymbol.getTypeParameters().stream()
-			.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver, null))
+			.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver))
 			.toArray(ITypeBinding[]::new);
 	}
 
@@ -467,11 +460,11 @@ public class JavacTypeBinding implements ITypeBinding {
 		if (this.type instanceof WildcardType wildcardType) {
 			Type extendsBound = wildcardType.getExtendsBound();
 			if (extendsBound != null) {
-				return new JavacTypeBinding(extendsBound, resolver, null);
+				return new JavacTypeBinding(extendsBound, resolver);
 			}
 			Type superBound = wildcardType.getSuperBound();
 			if (superBound != null) {
-				return new JavacTypeBinding(superBound, resolver, null);
+				return new JavacTypeBinding(superBound, resolver);
 			}
 		}
 		return null;
@@ -536,7 +529,7 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public boolean isGenericType() {
-		return this.typeArguments == null && !this.typeSymbol.getTypeParameters().isEmpty();
+		return this.type.getTypeArguments().isEmpty() && !this.typeSymbol.getTypeParameters().isEmpty();
 	}
 
 	@Override
@@ -572,7 +565,7 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public boolean isParameterizedType() {
-		return this.typeArguments != null;
+		return !this.type.getTypeArguments().isEmpty();
 	}
 
 	@Override
