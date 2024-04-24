@@ -10,9 +10,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.javac.dom;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import javax.lang.model.type.NullType;
@@ -40,7 +38,6 @@ import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Type;
-import javax.lang.model.type.TypeKind;
 import com.sun.tools.javac.code.Type.ArrayType;
 import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.TypeVar;
@@ -120,7 +117,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		return builder.toString();
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean erased) {
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
 		if (typeToBuild instanceof Type.JCNoType) {
 			return;
 		}
@@ -150,7 +147,7 @@ public class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			builder.append(typeToBuild.asElement().getQualifiedName().toString().replace('.', '/'));
-			if (typeToBuild.isParameterized() && !erased) {
+			if (typeToBuild.isParameterized()) {
 				builder.append('<');
 				for (var typeArgument : typeToBuild.getTypeArguments()) {
 					getKey(builder, typeArgument, false);
@@ -180,10 +177,6 @@ public class JavacTypeBinding implements ITypeBinding {
 			}
 		}
 		throw new UnsupportedOperationException("Unimplemented method 'getKey'");
-	}
-
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
-		getKey(builder, typeToBuild, isLeaf, false);
 	}
 
 	@Override
@@ -348,10 +341,9 @@ public class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding[] getInterfaces() {
-		if (this.typeSymbol instanceof final TypeVariableSymbol typeVarSymb && this.type instanceof TypeVar tv) {
-			List<Type> bounds = typeVarSymb.getBounds();
+		if (this.typeSymbol instanceof TypeVariableSymbol && this.type instanceof TypeVar tv) {
 			Type t = tv.getUpperBound();
-			if( t.tsym instanceof ClassSymbol cs) {
+			if (t.tsym instanceof ClassSymbol) {
 				JavacTypeBinding jtb = new JavacTypeBinding(t, this.resolver);
 				if( jtb.isInterface()) {
 					return new ITypeBinding[] {jtb};

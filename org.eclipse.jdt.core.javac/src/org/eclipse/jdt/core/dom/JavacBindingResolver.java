@@ -181,9 +181,6 @@ public class JavacBindingResolver extends BindingResolver {
 		return null;
 	}
 
-	/**
-	 * TODO: we should avoid using this if possible
-	 */
 	public IBinding getBinding(final Symbol owner, final com.sun.tools.javac.code.Type type) {
 		if (owner instanceof final PackageSymbol other) {
 			return new JavacPackageBinding(other, this);

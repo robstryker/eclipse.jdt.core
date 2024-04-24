@@ -29,7 +29,6 @@ public class JavacMemberValuePairBinding implements IMemberValuePairBinding {
 	private final JavacBindingResolver resolver;
 
 	public JavacMemberValuePairBinding(MethodSymbol key, Attribute value, JavacBindingResolver resolver) {
-		// FIXME
 		this.method = new JavacMethodBinding(key.type.asMethodType(), key, resolver);
 		this.value = value;
 		this.resolver = resolver;
