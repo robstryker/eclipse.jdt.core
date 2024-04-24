@@ -219,7 +219,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		}
 		if (this.typeSymbol.type instanceof WildcardType wildcardType) {
 			// TODO: probably wrong, we might need to pass in the parent node from the AST
-			return (ITypeBinding)this.resolver.getBinding(wildcardType.type.tsym, null);
+			return (ITypeBinding)this.resolver.getBinding(wildcardType.type.tsym, wildcardType.type);
 		}
 		throw new IllegalStateException("Binding is a wildcard, but type cast failed");
 	}
@@ -309,7 +309,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		if (!this.isLocal()) {
 			return null;
 		}
-		return this.resolver.getBinding(this.typeSymbol.owner, null);
+		return this.resolver.getBinding(this.typeSymbol.owner, this.typeSymbol.owner.type);
 	}
 
 	@Override

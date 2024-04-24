@@ -113,7 +113,7 @@ public class JavacMethodBinding implements IMethodBinding {
 
 	@Override
 	public IJavaElement getJavaElement() {
-		IJavaElement parent = this.resolver.getBinding(this.methodSymbol.owner, null).getJavaElement();
+		IJavaElement parent = this.resolver.getBinding(this.methodSymbol.owner, this.methodType).getJavaElement();
 		if (parent instanceof IType type) {
 			return type.getMethod(this.methodSymbol.getSimpleName().toString(),
 				this.methodSymbol.params().stream()
