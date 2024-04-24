@@ -267,7 +267,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		return StreamSupport.stream(this.typeSymbol.members().getSymbols().spliterator(), false)
 			.filter(MethodSymbol.class::isInstance)
 			.map(MethodSymbol.class::cast)
-			.map(sym -> new JavacMethodBinding(sym, this.resolver, null))
+			.map(sym -> new JavacMethodBinding(sym.type.asMethodType(), sym, this.resolver))
 			.toArray(IMethodBinding[]::new);
 	}
 
@@ -304,7 +304,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		Symbol parentSymbol = this.typeSymbol.owner;
 		do {
 			if (parentSymbol instanceof final MethodSymbol method) {
-				return new JavacMethodBinding(method, this.resolver, null);
+				return new JavacMethodBinding(method.type.asMethodType(), method, this.resolver);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
@@ -339,7 +339,7 @@ public class JavacTypeBinding implements ITypeBinding {
 		try {
 			Symbol symbol = types.findDescriptorSymbol(this.typeSymbol);
 			if (symbol instanceof MethodSymbol methodSymbol) {
-				return new JavacMethodBinding(methodSymbol, resolver, null);
+				return new JavacMethodBinding(methodSymbol.type.asMethodType(), methodSymbol, resolver);
 			}
 		} catch (FunctionDescriptorLookupError ignore) {
 		}

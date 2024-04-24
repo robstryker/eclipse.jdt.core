@@ -37,17 +37,20 @@ import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Type.JCNoType;
+import com.sun.tools.javac.code.Type.MethodType;
 
 public class JavacMethodBinding implements IMethodBinding {
 
-	public final MethodSymbol methodSymbol;
-	final JavacBindingResolver resolver;
-	private final List<TypeSymbol> typeArguments;
+	private static final ITypeBinding[] NO_TYPE_ARGUMENTS = new ITypeBinding[0];
 
-	public JavacMethodBinding(MethodSymbol sym, JavacBindingResolver resolver, List<TypeSymbol> typeArguments) {
-		this.methodSymbol = sym;
+	public final MethodSymbol methodSymbol;
+	private final MethodType methodType;
+	final JavacBindingResolver resolver;
+
+	public JavacMethodBinding(MethodType methodType, MethodSymbol methodSymbol, JavacBindingResolver resolver) {
+		this.methodType = methodType;
+		this.methodSymbol = methodSymbol;
 		this.resolver = resolver;
-		this.typeArguments = typeArguments;
 	}
 
 	@Override
@@ -219,7 +222,7 @@ public class JavacMethodBinding implements IMethodBinding {
 			return null;
 		}
 		if (this.methodSymbol.owner instanceof MethodSymbol methodSymbol) {
-			return new JavacMethodBinding(methodSymbol, resolver, null);
+			return new JavacMethodBinding(methodSymbol.type.asMethodType(), methodSymbol, resolver);
 		} else if (this.methodSymbol.owner instanceof VarSymbol variableSymbol) {
 			return new JavacVariableBinding(variableSymbol, resolver);
 		}
@@ -283,18 +286,21 @@ public class JavacMethodBinding implements IMethodBinding {
 
 	@Override
 	public boolean isGenericMethod() {
-		return this.typeArguments == null && !this.methodSymbol.getTypeParameters().isEmpty();
+		return this.methodType.getTypeArguments().isEmpty() && !this.methodSymbol.getTypeParameters().isEmpty();
 	}
 
 	@Override
 	public boolean isParameterizedMethod() {
-		return this.typeArguments != null;
+		return !this.methodType.getTypeArguments().isEmpty();
 	}
 
 	@Override
 	public ITypeBinding[] getTypeArguments() {
-		return this.typeArguments.stream()
-				.map(symbol -> new JavacTypeBinding(symbol.type, this.resolver))
+		if (this.methodType.getTypeArguments().isEmpty()) {
+			return NO_TYPE_ARGUMENTS;
+		}
+		return this.methodType.getTypeArguments().stream()
+				.map(type -> new JavacTypeBinding(type, this.resolver))
 				.toArray(ITypeBinding[]::new);
 	}
 

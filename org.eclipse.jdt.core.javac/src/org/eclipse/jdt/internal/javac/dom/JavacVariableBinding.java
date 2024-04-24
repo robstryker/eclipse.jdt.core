@@ -165,7 +165,7 @@ public class JavacVariableBinding implements IVariableBinding {
 		Symbol parentSymbol = this.variableSymbol.owner;
 		do {
 			if (parentSymbol instanceof MethodSymbol method) {
-				return new JavacMethodBinding(method, this.resolver, null);
+				return new JavacMethodBinding(method.type.asMethodType(), method, this.resolver);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
