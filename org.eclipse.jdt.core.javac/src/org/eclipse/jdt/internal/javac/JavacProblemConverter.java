@@ -91,8 +91,16 @@ public class JavacProblemConverter {
 			CharSequence charContent = fileObject.getCharContent(true);
 			ScannerFactory scannerFactory = ScannerFactory.instance(new Context());
 			Scanner javacScanner = scannerFactory.newScanner(charContent, true);
-			while (javacScanner.token().endPos <= preferedOffset) {
+			Token t = javacScanner.token();
+			while (t != null && t.endPos <= preferedOffset) {
 				javacScanner.nextToken();
+				t = javacScanner.token();
+				Token prev = javacScanner.prevToken();
+				if( prev != null ) {
+					if( t.endPos == prev.endPos && t.pos == prev.pos && t.kind.equals(prev.kind)) {
+						t = null; // We're stuck in a loop. Give up. 
+					}
+				}
 			}
 			Token toHighlight = javacScanner.prevToken();
 			return new org.eclipse.jface.text.Position(toHighlight.pos, toHighlight.endPos - toHighlight.pos - 1);
