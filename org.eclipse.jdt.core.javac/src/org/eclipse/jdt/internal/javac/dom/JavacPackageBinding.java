@@ -14,12 +14,16 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IModuleDescription;
 import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.IAnnotationBinding;
 import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IModuleBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.JavacBindingResolver;
+import org.eclipse.jdt.core.dom.PackageDeclaration;
 
 import com.sun.tools.javac.code.Symbol.PackageSymbol;
 
@@ -72,17 +76,52 @@ public class JavacPackageBinding implements IPackageBinding {
 			return null;
 		}
 		try {
-			return Arrays.stream(this.resolver.javaProject.getAllPackageFragmentRoots())
+			IJavaElement ret = Arrays.stream(this.resolver.javaProject.getAllPackageFragmentRoots())
 				.map(root -> root.getPackageFragment(this.packageSymbol.getQualifiedName().toString()))
 				.filter(Objects::nonNull)
 				.filter(IPackageFragment::exists)
 				.findFirst()
 				.orElse(null);
+			
+			// TODO need to make sure the package is accessible in the module. :|
+			return ret;
 		} catch (JavaModelException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public IModuleBinding getModule() {
+		try {
+			IPackageFragment ret = Arrays.stream(this.resolver.javaProject.getAllPackageFragmentRoots())
+				.map(root -> root.getPackageFragment(this.packageSymbol.getQualifiedName().toString()))
+				.filter(Objects::nonNull)
+				.filter(IPackageFragment::exists)
+				.findFirst()
+				.orElse(null);
+			if( ret != null ) {
+				IJavaElement root = ret;
+				while(root != null && !(root instanceof IPackageFragmentRoot)) {
+					root = root.getParent();
+				}
+				if( root instanceof IPackageFragmentRoot ipfr) {
+					IModuleDescription desc = ipfr.getModuleDescription();
+					if( desc != null ) {
+						IJavaElement el = desc.getParent();
+						int z = 5;
+						int q = 3;
+					}
+					// ????
+					return new JavacModuleBinding(desc, this.resolver);
+				}
+			}
+		} catch (JavaModelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+		return null;
 	}
 
 	@Override
