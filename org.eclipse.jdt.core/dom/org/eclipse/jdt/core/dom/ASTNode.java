@@ -3127,7 +3127,8 @@ public abstract class ASTNode {
 	 * @return one of the node type constants
 	 */
 	public final int getNodeType() {
-		return this.typeAndFlags >>> 16;
+		int nt = this.typeAndFlags >>> 16;
+		return nt;
 	}
 
 	/**
@@ -3186,7 +3187,13 @@ public abstract class ASTNode {
 	 * <code>false</code> if they do not match
 	 */
 	public final boolean subtreeMatch(ASTMatcher matcher, Object other) {
-		return subtreeMatch0(matcher, other);
+		boolean ret = subtreeMatch0(matcher, other);
+		if( !ret ) {
+			String clazMsg = this.getClass().getName() + ", " + (other == null ? "null" : other.getClass().getName());
+			String nodeMsg = "Expected " + this.toString() + "\nBut Was: " + (other == null ? "null" : other.toString());
+			throw new RuntimeException("Died Here: " + clazMsg + "\n" + nodeMsg);
+		}
+		return ret;
 	}
 
 	/**

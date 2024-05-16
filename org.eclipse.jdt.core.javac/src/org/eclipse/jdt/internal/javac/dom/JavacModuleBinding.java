@@ -57,7 +57,7 @@ public class JavacModuleBinding implements IModuleBinding {
 	@Override
 	public IAnnotationBinding[] getAnnotations() {
 		// TODO - don't see any way to get this?
-		return null; //new IAnnotationBinding[0];
+		return new IAnnotationBinding[0];
 	}
 
 	@Override

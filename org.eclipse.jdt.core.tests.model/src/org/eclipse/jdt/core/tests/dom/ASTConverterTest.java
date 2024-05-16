@@ -14,16 +14,101 @@
 
 package org.eclipse.jdt.core.tests.dom;
 
-import java.util.*;
-
-import junit.framework.Test;
+import java.util.Enumeration;
+import java.util.List;
 
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.jdt.core.*;
-import org.eclipse.jdt.core.dom.*;
-import org.eclipse.jdt.core.jdom.*;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IField;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTMatcher;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.ArrayCreation;
+import org.eclipse.jdt.core.dom.ArrayInitializer;
+import org.eclipse.jdt.core.dom.ArrayType;
+import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.BodyDeclaration;
+import org.eclipse.jdt.core.dom.BooleanLiteral;
+import org.eclipse.jdt.core.dom.BreakStatement;
+import org.eclipse.jdt.core.dom.CastExpression;
+import org.eclipse.jdt.core.dom.CatchClause;
+import org.eclipse.jdt.core.dom.CharacterLiteral;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.ConditionalExpression;
+import org.eclipse.jdt.core.dom.ContinueStatement;
+import org.eclipse.jdt.core.dom.CustomASTMatcher;
+import org.eclipse.jdt.core.dom.DoStatement;
+import org.eclipse.jdt.core.dom.EmptyStatement;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
+import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.ForStatement;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.IPackageBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.IfStatement;
+import org.eclipse.jdt.core.dom.ImportDeclaration;
+import org.eclipse.jdt.core.dom.InfixExpression;
+import org.eclipse.jdt.core.dom.Initializer;
+import org.eclipse.jdt.core.dom.InstanceofExpression;
+import org.eclipse.jdt.core.dom.Javadoc;
+import org.eclipse.jdt.core.dom.LabeledStatement;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.Modifier;
+import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.NullLiteral;
+import org.eclipse.jdt.core.dom.NumberLiteral;
+import org.eclipse.jdt.core.dom.PackageDeclaration;
+import org.eclipse.jdt.core.dom.ParenthesizedExpression;
+import org.eclipse.jdt.core.dom.PostfixExpression;
+import org.eclipse.jdt.core.dom.PrefixExpression;
+import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.core.dom.QualifiedName;
+import org.eclipse.jdt.core.dom.ReturnStatement;
+import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.SimpleType;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.Statement;
+import org.eclipse.jdt.core.dom.StringLiteral;
+import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
+import org.eclipse.jdt.core.dom.SuperFieldAccess;
+import org.eclipse.jdt.core.dom.SuperMethodInvocation;
+import org.eclipse.jdt.core.dom.SwitchCase;
+import org.eclipse.jdt.core.dom.SwitchStatement;
+import org.eclipse.jdt.core.dom.SynchronizedStatement;
+import org.eclipse.jdt.core.dom.ThisExpression;
+import org.eclipse.jdt.core.dom.ThrowStatement;
+import org.eclipse.jdt.core.dom.TryStatement;
+import org.eclipse.jdt.core.dom.Type;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
+import org.eclipse.jdt.core.dom.TypeLiteral;
+import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.jdt.core.dom.WhileStatement;
+import org.eclipse.jdt.core.jdom.DOMFactory;
+import org.eclipse.jdt.core.jdom.IDOMCompilationUnit;
+import org.eclipse.jdt.core.jdom.IDOMMethod;
+import org.eclipse.jdt.core.jdom.IDOMNode;
+import org.eclipse.jdt.core.jdom.IDOMType;
 import org.eclipse.jdt.core.util.IModifierConstants;
+
+import junit.framework.Test;
 
 @SuppressWarnings("rawtypes")
 public class ASTConverterTest extends ConverterTestSetup {
@@ -115,7 +200,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		methodDeclaration.setBody(block);
 		type.bodyDeclarations().add(methodDeclaration);
 		unit.types().add(type);
-		assertTrue("Both AST trees should be identical", result.subtreeMatch(new ASTMatcher(), unit));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", result.subtreeMatch(createASTMatcher(), unit));//$NON-NLS-1$
 		String expected =
 			"package test0001;\n" +
 			"import java.util.*;\n" +
@@ -139,7 +224,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		ClassInstanceCreation classInstanceCreation = this.ast.newClassInstanceCreation();
 		classInstanceCreation.setName(this.ast.newSimpleName("Object")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new Object()", source); //$NON-NLS-1$
 	}
 
@@ -161,7 +246,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 					this.ast.newSimpleName("lang")), //$NON-NLS-1$
 				this.ast.newSimpleName("Object"));//$NON-NLS-1$
 		classInstanceCreation.setName(name);
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new java.lang.Object()", source); //$NON-NLS-1$
 	}
 
@@ -186,7 +271,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		StringLiteral literal = this.ast.newStringLiteral();
 		literal.setLiteralValue("ERROR"); //$NON-NLS-1$
 		classInstanceCreation.arguments().add(literal);
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new java.lang.Exception(\"ERROR\")", source); //$NON-NLS-1$
 	}
 
@@ -210,7 +295,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		classInstanceCreation.setName(name);
 		AnonymousClassDeclaration anonymousClassDeclaration = this.ast.newAnonymousClassDeclaration();
 		classInstanceCreation.setAnonymousClassDeclaration(anonymousClassDeclaration);
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new java.lang.Object() {}", source); //$NON-NLS-1$
 		ClassInstanceCreation classInstanceCreation2 = (ClassInstanceCreation) expression;
 		Name name2 = classInstanceCreation2.getName();
@@ -245,7 +330,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		AnonymousClassDeclaration anonymousClassDeclaration = this.ast.newAnonymousClassDeclaration();
 		anonymousClassDeclaration.bodyDeclarations().add(methodDeclaration);
 		classInstanceCreation.setAnonymousClassDeclaration(anonymousClassDeclaration);
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new java.lang.Runnable() { public void run() {}}", source); //$NON-NLS-1$
 	}
 
@@ -267,7 +352,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ClassInstanceCreation classInstanceCreationExpression = this.ast.newClassInstanceCreation();
 		classInstanceCreationExpression.setName(this.ast.newSimpleName("Test")); //$NON-NLS-1$
 		classInstanceCreation.setExpression(classInstanceCreationExpression);
-		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", classInstanceCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new Test().new D()", source); //$NON-NLS-1$
 	}
 
@@ -288,7 +373,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		arrayInitializer.expressions().add(this.ast.newNumberLiteral("3"));//$NON-NLS-1$
 		arrayInitializer.expressions().add(this.ast.newNumberLiteral("4"));//$NON-NLS-1$
 		arrayCreation.setInitializer(arrayInitializer);
-		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new int[] {1, 2, 3, 4}", source); //$NON-NLS-1$
 	}
 
@@ -311,7 +396,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		innerArrayInitializer.expressions().add(this.ast.newNumberLiteral("2"));//$NON-NLS-1$
 		arrayInitializer.expressions().add(innerArrayInitializer);
 		arrayCreation.setInitializer(arrayInitializer);
-		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new int[][] {{1}, {2}}", source); //$NON-NLS-1$
 	}
 
@@ -327,7 +412,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ArrayCreation arrayCreation = this.ast.newArrayCreation();
 		arrayCreation.setType(this.ast.newArrayType(this.ast.newPrimitiveType(PrimitiveType.INT), 1));
 		arrayCreation.dimensions().add(this.ast.newNumberLiteral("3")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new int[3]", source); //$NON-NLS-1$
 	}
 
@@ -343,7 +428,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ArrayCreation arrayCreation = this.ast.newArrayCreation();
 		arrayCreation.setType(this.ast.newArrayType(this.ast.newPrimitiveType(PrimitiveType.INT), 2));
 		arrayCreation.dimensions().add(this.ast.newNumberLiteral("3")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new int[3][]", source); //$NON-NLS-1$
 	}
 
@@ -364,7 +449,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		innerArrayInitializer = this.ast.newArrayInitializer();
 		arrayInitializer.expressions().add(innerArrayInitializer);
 		arrayCreation.setInitializer(arrayInitializer);
-		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", arrayCreation.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "new int[][] {{}, {}}", source); //$NON-NLS-1$
 	}
 
@@ -383,7 +468,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		VariableDeclarationStatement statement = this.ast.newVariableDeclarationStatement(variableDeclarationFragment);
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i;", source); //$NON-NLS-1$
 	}
 
@@ -404,7 +489,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i = 0;", source); //$NON-NLS-1$
 	}
 
@@ -422,7 +507,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("1")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i = 1;", source); //$NON-NLS-1$
 	}
 
@@ -440,7 +525,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.PLUS_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i += 2;", source); //$NON-NLS-1$
 	}
 
@@ -458,7 +543,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.MINUS_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i -= 2;", source); //$NON-NLS-1$
 	}
 
@@ -476,7 +561,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.TIMES_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i *= 2;", source); //$NON-NLS-1$
 	}
 
@@ -494,7 +579,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.DIVIDE_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i /= 2;", source); //$NON-NLS-1$
 	}
 
@@ -512,7 +597,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.BIT_AND_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i &= 2;", source); //$NON-NLS-1$
 	}
 
@@ -530,7 +615,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.BIT_OR_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i |= 2;", source); //$NON-NLS-1$
 	}
 
@@ -548,7 +633,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.BIT_XOR_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i ^= 2;", source); //$NON-NLS-1$
 	}
 
@@ -566,7 +651,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.REMAINDER_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i %= 2;", source); //$NON-NLS-1$
 	}
 
@@ -584,7 +669,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.LEFT_SHIFT_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i <<= 2;", source); //$NON-NLS-1$
 	}
 
@@ -602,7 +687,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.RIGHT_SHIFT_SIGNED_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i >>= 2;", source); //$NON-NLS-1$
 	}
 
@@ -620,7 +705,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assignment.setRightHandSide(this.ast.newNumberLiteral("2")); //$NON-NLS-1$
 		assignment.setOperator(Assignment.Operator.RIGHT_SHIFT_UNSIGNED_ASSIGN);
 		ExpressionStatement statement = this.ast.newExpressionStatement(assignment);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i >>>= 2;", source); //$NON-NLS-1$
 	}
 
@@ -637,7 +722,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		prefixExpression.setOperand(this.ast.newSimpleName("i"));//$NON-NLS-1$
 		prefixExpression.setOperator(PrefixExpression.Operator.DECREMENT);//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(prefixExpression);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "--i;", source); //$NON-NLS-1$
 	}
 
@@ -654,7 +739,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		prefixExpression.setOperand(this.ast.newSimpleName("i"));//$NON-NLS-1$
 		prefixExpression.setOperator(PrefixExpression.Operator.INCREMENT);//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(prefixExpression);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "++i;", source); //$NON-NLS-1$
 	}
 
@@ -671,7 +756,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		postfixExpression.setOperand(this.ast.newSimpleName("i"));//$NON-NLS-1$
 		postfixExpression.setOperator(PostfixExpression.Operator.DECREMENT);//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(postfixExpression);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i--;", source); //$NON-NLS-1$
 	}
 
@@ -688,7 +773,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		postfixExpression.setOperand(this.ast.newSimpleName("i"));//$NON-NLS-1$
 		postfixExpression.setOperator(PostfixExpression.Operator.INCREMENT);//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(postfixExpression);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "i++;", source); //$NON-NLS-1$
 	}
 
@@ -711,7 +796,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		VariableDeclarationStatement statement = this.ast.newVariableDeclarationStatement(variableDeclarationFragment);
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newSimpleType(this.ast.newSimpleName("String")));//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "String s = (String) o;", source); //$NON-NLS-1$
 	}
 
@@ -734,7 +819,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		VariableDeclarationStatement statement = this.ast.newVariableDeclarationStatement(variableDeclarationFragment);
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i = (int) d;", source); //$NON-NLS-1$
 	}
 
@@ -759,7 +844,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.FLOAT));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "float f = (float) d;", source); //$NON-NLS-1$
 	}
 
@@ -784,7 +869,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BYTE));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "byte b = (byte) d;", source); //$NON-NLS-1$
 	}
 
@@ -809,7 +894,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.SHORT));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "short s = (short) d;", source); //$NON-NLS-1$
 	}
 
@@ -834,7 +919,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.LONG));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "long l = (long) d;", source); //$NON-NLS-1$
 	}
 
@@ -859,7 +944,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.CHAR));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "char c = (char) i;", source); //$NON-NLS-1$
 	}
 
@@ -883,7 +968,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newSimpleType(this.ast.newSimpleName("Class")));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(((VariableDeclarationFragment)((VariableDeclarationStatement)node).fragments().get(0)).getInitializer(), "int.class", source); //$NON-NLS-1$
 	}
 
@@ -907,7 +992,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newSimpleType(this.ast.newSimpleName("Class")));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(((VariableDeclarationFragment)((VariableDeclarationStatement)node).fragments().get(0)).getInitializer(), "void.class", source); //$NON-NLS-1$
 	}
 
@@ -931,7 +1016,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newSimpleType(this.ast.newSimpleName("Class")));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(((VariableDeclarationFragment)((VariableDeclarationStatement)node).fragments().get(0)).getInitializer(), "double.class", source); //$NON-NLS-1$
 	}
 
@@ -955,7 +1040,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newSimpleType(this.ast.newSimpleName("Class")));//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(((VariableDeclarationFragment)((VariableDeclarationStatement)node).fragments().get(0)).getInitializer(), "long.class", source); //$NON-NLS-1$
 	}
 
@@ -969,7 +1054,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		BooleanLiteral literal = this.ast.newBooleanLiteral(false);
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "false", source); //$NON-NLS-1$
 	}
 
@@ -983,7 +1068,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		BooleanLiteral literal = this.ast.newBooleanLiteral(true);
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "true", source); //$NON-NLS-1$
 	}
 
@@ -997,7 +1082,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NullLiteral literal = this.ast.newNullLiteral();
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "null", source); //$NON-NLS-1$
 	}
 
@@ -1012,7 +1097,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		CharacterLiteral literal = this.ast.newCharacterLiteral();
 		literal.setEscapedValue("'c'"); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "'c'", source); //$NON-NLS-1$
 	}
 
@@ -1026,7 +1111,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("1.00001");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "1.00001", source); //$NON-NLS-1$
 	}
 
@@ -1040,7 +1125,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("1.00001f");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "1.00001f", source); //$NON-NLS-1$
 	}
 
@@ -1054,7 +1139,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("30000");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "30000", source); //$NON-NLS-1$
 	}
 
@@ -1068,7 +1153,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("-2147483648");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "-2147483648", source); //$NON-NLS-1$
 	}
 
@@ -1082,7 +1167,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("2147483648L");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "2147483648L", source); //$NON-NLS-1$
 	}
 
@@ -1099,7 +1184,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		PrefixExpression prefixExpression = this.ast.newPrefixExpression();
 		prefixExpression.setOperand(literal);
 		prefixExpression.setOperator(PrefixExpression.Operator.MINUS);
-		assertTrue("Both AST trees should be identical", prefixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", prefixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "-2147483648L", source); //$NON-NLS-1$
 	}
 
@@ -1113,7 +1198,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode expression = getASTNodeToCompare((CompilationUnit) result);
 		assertNotNull("Expression should not be null", expression); //$NON-NLS-1$
 		NumberLiteral literal = this.ast.newNumberLiteral("-9223372036854775808L");//$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", literal.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", literal.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "-9223372036854775808L", source); //$NON-NLS-1$
 	}
 
@@ -1138,7 +1223,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal.setLiteralValue(" World");//$NON-NLS-1$
 		infixExpression.setRightOperand(literal);//$NON-NLS-1$
 
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"Hello\" + \" World\"", source); //$NON-NLS-1$
 	}
 
@@ -1164,7 +1249,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b3 = b && b2;", source); //$NON-NLS-1$
 	}
 
@@ -1190,7 +1275,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b3 = b || b2;", source); //$NON-NLS-1$
 	}
 
@@ -1216,7 +1301,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b3 = b == b2;", source); //$NON-NLS-1$
 	}
 
@@ -1242,7 +1327,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i + j;", source); //$NON-NLS-1$
 	}
 
@@ -1268,7 +1353,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i - j;", source); //$NON-NLS-1$
 	}
 
@@ -1294,7 +1379,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i * j;", source); //$NON-NLS-1$
 	}
 
@@ -1320,7 +1405,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i / j;", source); //$NON-NLS-1$
 	}
 
@@ -1346,7 +1431,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i % j;", source); //$NON-NLS-1$
 	}
 
@@ -1372,7 +1457,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i ^ j;", source); //$NON-NLS-1$
 	}
 
@@ -1398,7 +1483,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i & j;", source); //$NON-NLS-1$
 	}
 
@@ -1424,7 +1509,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = i | j;", source); //$NON-NLS-1$
 	}
 
@@ -1450,7 +1535,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b2 = b < b1;", source); //$NON-NLS-1$
 	}
 
@@ -1476,7 +1561,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b2 = b <= b1;", source); //$NON-NLS-1$
 	}
 
@@ -1502,7 +1587,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b2 = b > b1;", source); //$NON-NLS-1$
 	}
 
@@ -1528,7 +1613,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b2 = b >= b1;", source); //$NON-NLS-1$
 	}
 
@@ -1554,7 +1639,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b2 = b != b1;", source); //$NON-NLS-1$
 	}
 
@@ -1579,7 +1664,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b = o instanceof Integer;", source); //$NON-NLS-1$
 	}
 
@@ -1611,7 +1696,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b = o instanceof java.lang.Integer;", source); //$NON-NLS-1$
 	}
 
@@ -1635,7 +1720,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b1 = !b;", source); //$NON-NLS-1$
 	}
 
@@ -1659,7 +1744,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int n = ~i;", source); //$NON-NLS-1$
 	}
 
@@ -1684,7 +1769,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i = +2;", source); //$NON-NLS-1$
 	}
 
@@ -1710,7 +1795,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i = -2;", source); //$NON-NLS-1$
 	}
 
@@ -1739,7 +1824,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		VariableDeclarationStatement statement = this.ast.newVariableDeclarationStatement(variableDeclarationFragment);
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.BOOLEAN));
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "boolean b = args != null ? true : false;", source); //$NON-NLS-1$
 	}
 
@@ -1768,7 +1853,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setModifiers(Modifier.NONE);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i = true ? args.length: 0;", source); //$NON-NLS-1$
 	}
 
@@ -1784,7 +1869,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		SuperMethodInvocation superMethodInvocation = this.ast.newSuperMethodInvocation();
 		superMethodInvocation.setName(this.ast.newSimpleName("bar")); //$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(superMethodInvocation);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "super.bar();", source); //$NON-NLS-1$
 	}
 
@@ -1801,7 +1886,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		superMethodInvocation.setName(this.ast.newSimpleName("bar")); //$NON-NLS-1$
 		superMethodInvocation.arguments().add(this.ast.newNumberLiteral("4"));//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(superMethodInvocation);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "super.bar(4);", source); //$NON-NLS-1$
 	}
 
@@ -1818,7 +1903,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		methodInvocation.setName(this.ast.newSimpleName("bar")); //$NON-NLS-1$
 		methodInvocation.arguments().add(this.ast.newNumberLiteral("4"));//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(methodInvocation);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "bar(4);", source); //$NON-NLS-1$
 	}
 
@@ -1836,7 +1921,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		methodInvocation.setExpression(this.ast.newThisExpression());
 		methodInvocation.arguments().add(this.ast.newNumberLiteral("4"));//$NON-NLS-1$
 		ExpressionStatement statement = this.ast.newExpressionStatement(methodInvocation);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "this.bar(4);", source); //$NON-NLS-1$
 	}
 
@@ -1851,7 +1936,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", node); //$NON-NLS-1$
 		ForStatement forStatement = this.ast.newForStatement();
 		forStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (;;);", source); //$NON-NLS-1$
 	}
 
@@ -1883,7 +1968,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		infixExpression.setOperator(InfixExpression.Operator.LESS);
 		infixExpression.setRightOperand(this.ast.newNumberLiteral("10")); //$NON-NLS-1$
 		forStatement.setExpression(infixExpression);
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (int i = 0; i < 10; i++) {}", source); //$NON-NLS-1$
 	}
 
@@ -1917,7 +2002,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		infixExpression.setRightOperand(this.ast.newNumberLiteral("10")); //$NON-NLS-1$
 		forStatement.setExpression(infixExpression);
 		forStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (int i = 0; i < 10; i++);", source); //$NON-NLS-1$
 	}
 
@@ -1946,7 +2031,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		postfixExpression.setOperator(PostfixExpression.Operator.INCREMENT);
 		forStatement.updaters().add(postfixExpression);
 		forStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (int i = 0;; i++);", source); //$NON-NLS-1$
 	}
 
@@ -1970,7 +2055,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		infixExpression.setRightOperand(this.ast.newNumberLiteral("10")); //$NON-NLS-1$
 		forStatement.setExpression(infixExpression);
 		forStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (; i < 10; i++);", source); //$NON-NLS-1$
 	}
 
@@ -1989,7 +2074,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		postfixExpression.setOperator(PostfixExpression.Operator.INCREMENT);
 		forStatement.updaters().add(postfixExpression);
 		forStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (;;i++);", source); //$NON-NLS-1$
 	}
 
@@ -2011,7 +2096,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 		statement.setModifiers(Modifier.NONE);
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i;", source); //$NON-NLS-1$
 	}
 
@@ -2041,7 +2126,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.setType(this.ast.newSimpleType(name));
 		statement.setModifiers(Modifier.NONE);
 
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "java.lang.String s;", source); //$NON-NLS-1$
 	}
 
@@ -2066,7 +2151,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		VariableDeclarationStatement statement = this.ast.newVariableDeclarationStatement(variableDeclarationFragment);
 		statement.setType(this.ast.newArrayType(this.ast.newPrimitiveType(PrimitiveType.INT), 1));
 		statement.setModifiers(Modifier.NONE);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int[] tab = {1, 2};", source); //$NON-NLS-1$
 	}
 
@@ -2085,7 +2170,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		variableDeclaration.setModifiers(Modifier.NONE);
 		variableDeclaration.setType(this.ast.newSimpleType(this.ast.newSimpleName("String")));//$NON-NLS-1$
 		variableDeclaration.setName(this.ast.newSimpleName("s")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", variableDeclaration.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", variableDeclaration.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "String s", source); //$NON-NLS-1$
 	}
 
@@ -2104,7 +2189,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		variableDeclaration.setModifiers(Modifier.FINAL);
 		variableDeclaration.setType(this.ast.newSimpleType(this.ast.newSimpleName("String")));//$NON-NLS-1$
 		variableDeclaration.setName(this.ast.newSimpleName("s")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", variableDeclaration.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", variableDeclaration.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "final String s", source); //$NON-NLS-1$
 		assertEquals("Wrong dimension", 0, node.getExtraDimensions()); //$NON-NLS-1$
 	}
@@ -2121,7 +2206,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		BreakStatement statement = (BreakStatement) ((Block) forStatement.getBody()).statements().get(0);
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		BreakStatement breakStatement = this.ast.newBreakStatement();
-		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "break;", source); //$NON-NLS-1$
 	}
 
@@ -2137,7 +2222,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ContinueStatement statement = (ContinueStatement) ((Block) forStatement.getBody()).statements().get(0);
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		ContinueStatement continueStatement = this.ast.newContinueStatement();
-		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "continue;", source); //$NON-NLS-1$
 	}
 
@@ -2154,7 +2239,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		ContinueStatement continueStatement = this.ast.newContinueStatement();
 		continueStatement.setLabel(this.ast.newSimpleName("label")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "continue label;", source); //$NON-NLS-1$
 	}
 
@@ -2171,7 +2256,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		BreakStatement breakStatement = this.ast.newBreakStatement();
 		breakStatement.setLabel(this.ast.newSimpleName("label")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "break label;", source); //$NON-NLS-1$
 	}
 
@@ -2220,7 +2305,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		methodInvocation.arguments().add(literal);
 		expressionStatement = this.ast.newExpressionStatement(methodInvocation);
 		switchStatement.statements().add(expressionStatement);
-		assertTrue("Both AST trees should be identical", switchStatement.subtreeMatch(new ASTMatcher(), node));	//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", switchStatement.subtreeMatch(createASTMatcher(), node));	//$NON-NLS-1$
 		String expectedSource = "switch(i) {\n" +//$NON-NLS-1$
 			 "			case 1: \n" +//$NON-NLS-1$
 			 "              break;\n" +//$NON-NLS-1$
@@ -2250,7 +2335,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ASTNode node = getASTNode((CompilationUnit) result, 0, 0, 0);
 		assertNotNull("Expression should not be null", node); //$NON-NLS-1$
 		EmptyStatement emptyStatement = this.ast.newEmptyStatement();
-		assertTrue("Both AST trees should be identical", emptyStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", emptyStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, ";", source); //$NON-NLS-1$
 	}
 
@@ -2268,7 +2353,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		block.statements().add(this.ast.newEmptyStatement());
 		doStatement.setBody(block);
 		doStatement.setExpression(this.ast.newBooleanLiteral(true));
-		assertTrue("Both AST trees should be identical", doStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", doStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "do {;\n" +//$NON-NLS-1$
 			 "		} while(true);";//$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
@@ -2286,7 +2371,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		WhileStatement whileStatement = this.ast.newWhileStatement();
 		whileStatement.setExpression(this.ast.newBooleanLiteral(true));
 		whileStatement.setBody(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", whileStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", whileStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "while(true);", source);//$NON-NLS-1$
 	}
 
@@ -2302,7 +2387,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		WhileStatement whileStatement = this.ast.newWhileStatement();
 		whileStatement.setExpression(this.ast.newBooleanLiteral(true));
 		whileStatement.setBody(this.ast.newBlock());
-		assertTrue("Both AST trees should be identical", whileStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", whileStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "while(true) {}", source);//$NON-NLS-1$
 	}
 
@@ -2326,7 +2411,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal = this.ast.newStringLiteral();//$NON-NLS-1$
 		literal.setLiteralValue("!"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(literal);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"Hello\" + \" World\" + \"!\"", source);//$NON-NLS-1$
 	}
 
@@ -2353,7 +2438,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal = this.ast.newStringLiteral();//$NON-NLS-1$
 		literal.setLiteralValue("!"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(literal);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"Hello\" + \" World\" + \"!\" + \"!\"", source);//$NON-NLS-1$
 	}
 
@@ -2380,7 +2465,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		NumberLiteral numberLiteral = this.ast.newNumberLiteral();//$NON-NLS-1$
 		numberLiteral.setToken("4"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(numberLiteral);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"Hello\" + \" World\" + \"!\" + 4", source);//$NON-NLS-1$
 	}
 
@@ -2407,7 +2492,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal = this.ast.newNumberLiteral();//$NON-NLS-1$
 		literal.setToken("4"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(literal);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "4 + 5 + 6 + 4", source);//$NON-NLS-1$
 	}
 
@@ -2443,7 +2528,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal.setToken("4"); //$NON-NLS-1$
 		infixExpression3.setRightOperand(literal);
 
-		assertTrue("Both AST trees should be identical", infixExpression3.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression3.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "4 - 5 + 6 + 4", source);//$NON-NLS-1$
 	}
 
@@ -2470,7 +2555,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal = this.ast.newNumberLiteral();//$NON-NLS-1$
 		literal.setToken("4"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(literal);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "4 - 5 - 6 - 4", source);//$NON-NLS-1$
 	}
 
@@ -2497,7 +2582,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal = this.ast.newNumberLiteral();//$NON-NLS-1$
 		literal.setToken("4"); //$NON-NLS-1$
 		infixExpression.extendedOperands().add(literal);
-		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"4\" + 5 + 6 + 4", source);//$NON-NLS-1$
 	}
 
@@ -2533,7 +2618,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal.setToken("4"); //$NON-NLS-1$
 		infixExpression3.setRightOperand(literal);
 
-		assertTrue("Both AST trees should be identical", infixExpression3.subtreeMatch(new ASTMatcher(), expression));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", infixExpression3.subtreeMatch(createASTMatcher(), expression));		//$NON-NLS-1$
 		checkSourceRange(expression, "\"4\" - 5 + 6 + 4", source);//$NON-NLS-1$
 	}
 
@@ -2550,7 +2635,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		NumberLiteral literal = this.ast.newNumberLiteral();
 		literal.setToken("2");//$NON-NLS-1$
 		returnStatement.setExpression(literal);
-		assertTrue("Both AST trees should be identical", returnStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", returnStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "return 2;", source);//$NON-NLS-1$
 	}
 
@@ -2567,7 +2652,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		NumberLiteral literal = this.ast.newNumberLiteral();
 		literal.setToken("2");//$NON-NLS-1$
 		returnStatement.setExpression(literal);
-		assertTrue("Both AST trees should be identical", returnStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", returnStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "return 2\\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2583,7 +2668,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		SynchronizedStatement synchronizedStatement = this.ast.newSynchronizedStatement();
 		synchronizedStatement.setExpression(this.ast.newThisExpression());
 		synchronizedStatement.setBody(this.ast.newBlock());
-		assertTrue("Both AST trees should be identical", synchronizedStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", synchronizedStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "synchronized(this) {\n" +//$NON-NLS-1$
 			 "		}"; //$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
@@ -2610,7 +2695,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		exceptionVariable.setType(this.ast.newSimpleType(this.ast.newSimpleName("Exception")));//$NON-NLS-1$
 		catchBlock.setException(exceptionVariable);
 		tryStatement.catchClauses().add(catchBlock);
-		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "try {\n" +//$NON-NLS-1$
 			 "		} catch(Exception e) {\n" +//$NON-NLS-1$
 			 "		} finally {\n" +//$NON-NLS-1$
@@ -2638,7 +2723,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		exceptionVariable.setType(this.ast.newSimpleType(this.ast.newSimpleName("Exception")));//$NON-NLS-1$
 		catchBlock.setException(exceptionVariable);
 		tryStatement.catchClauses().add(catchBlock);
-		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "try {\n" +//$NON-NLS-1$
 			 "		} catch(Exception e) {\n" +//$NON-NLS-1$
 			 "		}"; //$NON-NLS-1$
@@ -2671,7 +2756,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		exceptionVariable.setType(this.ast.newSimpleType(this.ast.newSimpleName("Exception")));//$NON-NLS-1$
 		catchBlock.setException(exceptionVariable);
 		tryStatement.catchClauses().add(catchBlock);
-		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", tryStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "try {\n" +//$NON-NLS-1$
 			 "			return 2;\n" +//$NON-NLS-1$
 			 "		} catch(Exception e) {\n" +//$NON-NLS-1$
@@ -2690,7 +2775,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", node); //$NON-NLS-1$
 		ThrowStatement throwStatement = this.ast.newThrowStatement();
 		throwStatement.setExpression(this.ast.newSimpleName("e")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "throw e   \\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2705,7 +2790,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", node); //$NON-NLS-1$
 		ThrowStatement throwStatement = this.ast.newThrowStatement();
 		throwStatement.setExpression(this.ast.newSimpleName("e")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "throw e /* comment in the middle of a throw */  \\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2720,7 +2805,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", node); //$NON-NLS-1$
 		ThrowStatement throwStatement = this.ast.newThrowStatement();
 		throwStatement.setExpression(this.ast.newSimpleName("e")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", throwStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "throw e /* comment in the middle of a throw */  \\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2736,7 +2821,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		IfStatement ifStatement = this.ast.newIfStatement();
 		ifStatement.setExpression(this.ast.newBooleanLiteral(true));
 		ifStatement.setThenStatement(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "if (true)\\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2753,7 +2838,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ifStatement.setExpression(this.ast.newBooleanLiteral(true));
 		ifStatement.setThenStatement(this.ast.newEmptyStatement());
 		ifStatement.setElseStatement(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "if (true)\\u003B\n" +//$NON-NLS-1$
 			 "\t\telse ;"; //$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
@@ -2772,7 +2857,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		ifStatement.setExpression(this.ast.newBooleanLiteral(true));
 		ifStatement.setThenStatement(this.ast.newBlock());
 		ifStatement.setElseStatement(this.ast.newEmptyStatement());
-		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "if (true) {}\n" +//$NON-NLS-1$
 			 "		else ;"; //$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
@@ -2794,7 +2879,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal.setToken("2");//$NON-NLS-1$
 		returnStatement.setExpression(literal);
 		ifStatement.setThenStatement(returnStatement);
-		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "if (true) return 2\\u003B", source);//$NON-NLS-1$
 	}
 
@@ -2819,7 +2904,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		literal.setToken("3");//$NON-NLS-1$
 		returnStatement.setExpression(literal);
 		ifStatement.setElseStatement(returnStatement);
-		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", ifStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "if (true) return 2;\n" +//$NON-NLS-1$
 			 "		else return 3;"; //$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
@@ -2857,7 +2942,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.fragments().add(fragment);
 		statement.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
 		statement.setModifiers(Modifier.NONE);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		VariableDeclarationFragment[] fragments = (VariableDeclarationFragment[])((VariableDeclarationStatement) node).fragments().toArray(new VariableDeclarationFragment[4]);
 		assertTrue("fragments.length != 4", fragments.length == 4); //$NON-NLS-1$
 		checkSourceRange(fragments[0], "x= 10", source);//$NON-NLS-1$
@@ -2899,7 +2984,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		statement.fragments().add(fragment);
 		statement.setType(this.ast.newArrayType(this.ast.newPrimitiveType(PrimitiveType.INT), 1));
 		statement.setModifiers(Modifier.NONE);
-		assertTrue("Both AST trees should be identical", statement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", statement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int[] x= 10, z[] = null, i, j[][];", source); //$NON-NLS-1$
 		VariableDeclarationFragment[] fragments = (VariableDeclarationFragment[])((VariableDeclarationStatement) node).fragments().toArray(new VariableDeclarationFragment[4]);
 		assertTrue("fragments.length != 4", fragments.length == 4); //$NON-NLS-1$
@@ -2933,7 +3018,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		prefixExpression.setOperator(PrefixExpression.Operator.INCREMENT);
 		forStatement.updaters().add(prefixExpression);
 		forStatement.setBody(this.ast.newBlock());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (String[] tab[] = null;; ++i) {}", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).updaters().get(0), "++i", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).initializers().get(0), "String[] tab[] = null", source); //$NON-NLS-1$
@@ -2963,7 +3048,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		prefixExpression.setOperator(PrefixExpression.Operator.INCREMENT);
 		forStatement.updaters().add(prefixExpression);
 		forStatement.setBody(this.ast.newBlock());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (String tab[] = null;; ++i) {}", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).updaters().get(0), "++i", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).initializers().get(0), "String tab[] = null", source); //$NON-NLS-1$
@@ -2993,7 +3078,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		postfixExpression.setOperator(PostfixExpression.Operator.INCREMENT);
 		forStatement.updaters().add(postfixExpression);
 		forStatement.setBody(this.ast.newBlock());
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (String tab[] = null;; i++/**/) {}", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).updaters().get(0), "i++", source); //$NON-NLS-1$
 		checkSourceRange((ASTNode) ((ForStatement) node).initializers().get(0), "String tab[] = null", source); //$NON-NLS-1$
@@ -3018,7 +3103,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		FieldDeclaration fieldDeclaration = this.ast.newFieldDeclaration(fragment);
 		fieldDeclaration.setModifiers(Modifier.NONE);
 		fieldDeclaration.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
-		assertTrue("Both AST trees should be identical", fieldDeclaration.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", fieldDeclaration.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "int i;", source); //$NON-NLS-1$
 	}
 
@@ -3055,7 +3140,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		fragment.setName(this.ast.newSimpleName("j"));//$NON-NLS-1$
 		fragment.setExtraDimensions(2);
 		fieldDeclaration.fragments().add(fragment);
-		assertTrue("Both AST trees should be identical", fieldDeclaration.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", fieldDeclaration.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "public int x= 10, y[] = null, i, j[][];", source); //$NON-NLS-1$
 		VariableDeclarationFragment[] fragments = (VariableDeclarationFragment[])((FieldDeclaration) node).fragments().toArray(new VariableDeclarationFragment[4]);
 		assertTrue("fragments.length != 4", fragments.length == 4); //$NON-NLS-1$
@@ -3084,7 +3169,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		singleVariableDeclaration.setModifiers(Modifier.FINAL);
 		singleVariableDeclaration.setName(this.ast.newSimpleName("i")); //$NON-NLS-1$
 		singleVariableDeclaration.setType(this.ast.newPrimitiveType(PrimitiveType.INT));
-		assertTrue("Both AST trees should be identical", singleVariableDeclaration.subtreeMatch(new ASTMatcher(), arg));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", singleVariableDeclaration.subtreeMatch(createASTMatcher(), arg));		//$NON-NLS-1$
 		checkSourceRange(node, "void foo(final int i) {}", source); //$NON-NLS-1$
 		checkSourceRange(arg, "final int i", source); //$NON-NLS-1$
 	}
@@ -3103,7 +3188,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((MethodDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		checkSourceRange(node, "/** JavaDoc Comment*/\n  void foo(final int i) {}", source); //$NON-NLS-1$
 		checkSourceRange(actualJavadoc, "/** JavaDoc Comment*/", source); //$NON-NLS-1$
 	}
@@ -3152,7 +3237,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((FieldDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		checkSourceRange(node, "/** JavaDoc Comment*/\n  int i;", source); //$NON-NLS-1$
 	}
 
@@ -3236,7 +3321,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((TypeDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			"public class Test {\n" +//$NON-NLS-1$
@@ -3260,7 +3345,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((TypeDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  class B {}";//$NON-NLS-1$
@@ -3351,7 +3436,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Javadoc comment should no be null", actualJavadoc); //$NON-NLS-1$
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  static {}";//$NON-NLS-1$
@@ -3374,7 +3459,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Javadoc comment should not be null", actualJavadoc); //$NON-NLS-1$
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  {}";//$NON-NLS-1$
@@ -4991,7 +5076,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((MethodDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		checkSourceRange(node, "/** JavaDoc Comment*/\n  void foo(final int i) {}", source); //$NON-NLS-1$
 		checkSourceRange(actualJavadoc, "/** JavaDoc Comment*/", source); //$NON-NLS-1$
 	}
@@ -5040,7 +5125,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((FieldDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		checkSourceRange(node, "/** JavaDoc Comment*/\n  int i;", source); //$NON-NLS-1$
 	}
 
@@ -5124,7 +5209,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((TypeDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			"public class Test {\n" +//$NON-NLS-1$
@@ -5148,7 +5233,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		Javadoc actualJavadoc = ((TypeDeclaration) node).getJavadoc();
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  class B {}";//$NON-NLS-1$
@@ -5239,7 +5324,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Javadoc comment should no be null", actualJavadoc); //$NON-NLS-1$
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  static {}";//$NON-NLS-1$
@@ -5262,7 +5347,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Javadoc comment should not be null", actualJavadoc); //$NON-NLS-1$
 		Javadoc javadoc = this.ast.newJavadoc();
 		javadoc.setComment("/** JavaDoc Comment*/");//$NON-NLS-1$*/
-		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(new ASTMatcher(), actualJavadoc));//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", javadoc.subtreeMatch(createASTMatcher(), actualJavadoc));//$NON-NLS-1$
 		String expectedContents =
 			 "/** JavaDoc Comment*/\n" + //$NON-NLS-1$
 			 "  {}";//$NON-NLS-1$
@@ -5299,7 +5384,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		ContinueStatement continueStatement = this.ast.newContinueStatement();
 		continueStatement.setLabel(this.ast.newSimpleName("label")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", continueStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "continue label;", source); //$NON-NLS-1$
 		checkSourceRange(statement.getLabel(), "label", source); //$NON-NLS-1$
 	}
@@ -5318,7 +5403,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		assertNotNull("Expression should not be null", statement); //$NON-NLS-1$
 		BreakStatement breakStatement = this.ast.newBreakStatement();
 		breakStatement.setLabel(this.ast.newSimpleName("label")); //$NON-NLS-1$
-		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(new ASTMatcher(), statement));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", breakStatement.subtreeMatch(createASTMatcher(), statement));		//$NON-NLS-1$
 		checkSourceRange(statement, "break label;", source); //$NON-NLS-1$
 		checkSourceRange(statement.getLabel(), "label", source); //$NON-NLS-1$
 	}
@@ -9113,7 +9198,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		infixExpression.setRightOperand(this.ast.newNumberLiteral("10")); //$NON-NLS-1$
 		forStatement.setExpression(infixExpression);
 
-		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", forStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		checkSourceRange(node, "for (int i=0, j=0, k=0; i<10 ; i++, j++, k++) {}", source); //$NON-NLS-1$
 	}
 
@@ -9286,7 +9371,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 		DoStatement doStatement = this.ast.newDoStatement();
 		doStatement.setBody(this.ast.newEmptyStatement());
 		doStatement.setExpression(this.ast.newBooleanLiteral(true));
-		assertTrue("Both AST trees should be identical", doStatement.subtreeMatch(new ASTMatcher(), node));		//$NON-NLS-1$
+		assertTrue("Both AST trees should be identical", doStatement.subtreeMatch(createASTMatcher(), node));		//$NON-NLS-1$
 		String expectedSource = "do ; while(true);";//$NON-NLS-1$
 		checkSourceRange(node, expectedSource, source);
 		DoStatement doStatement2 = (DoStatement) node;
@@ -9991,6 +10076,11 @@ public class ASTConverterTest extends ConverterTestSetup {
 		EnumDeclaration enumDecl = (EnumDeclaration) getASTNode(compilationUnit, 0);
 		EnumConstantDeclaration constant = (EnumConstantDeclaration) enumDecl.enumConstants().get(0);
 		checkSourceRange(constant, "B(){void c(){} }", contents);
+	}
+
+	private ASTMatcher createASTMatcher() {
+		//return new ASTMatcher();
+		return new CustomASTMatcher();
 	}
 }
 

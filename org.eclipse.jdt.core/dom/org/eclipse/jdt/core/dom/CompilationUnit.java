@@ -1007,7 +1007,8 @@ public class CompilationUnit extends ASTNode {
 			this.optionalCommentTable = null;
 		} else {
 			int nextAvailablePosition = 0;
-			for (Comment comment : commentTable) {
+			for (int i = 0; i < commentTable.length; i++) {
+				Comment comment = commentTable[i];
 				if (comment == null) {
 					throw new IllegalArgumentException();
 				}

@@ -240,25 +240,18 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths,
 			NodeSearcher nodeSearcher, int apiLevel, Map<String, String> compilerOptions,
 			WorkingCopyOwner workingCopyOwner, WorkingCopyOwner typeRootWorkingCopyOwner, int flags, IProgressMonitor monitor) {
-		// TODO currently only parse
+		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
 		CompilationUnit res = parse(new org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] { sourceUnit},
 				apiLevel, compilerOptions, flags, project, monitor).get(sourceUnit);
 		if (initialNeedsToResolveBinding) {
 			((JavacBindingResolver)res.ast.getBindingResolver()).isRecoveringBindings = (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
 			resolveBindings(res);
 		}
-		// For comparison
-//		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
-//		//res.typeAndFlags=res2.typeAndFlags;
-//		String res1a = res.toString();
-//		String res2a = res2.toString();
-//
-//		AnnotationTypeDeclaration l1 = (AnnotationTypeDeclaration)res.types().get(0);
-//		AnnotationTypeDeclaration l2 = (AnnotationTypeDeclaration)res2.types().get(0);
-//		Object o1 = l1.bodyDeclarations().get(0);
-//		Object o2 = l2.bodyDeclarations().get(0);
+		
+		res2.subtreeMatch(new CustomASTMatcher(), res);
 		return res;
 	}
+
 
 	private Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> parse(org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] sourceUnits, int apiLevel, Map<String, String> compilerOptions,
 			int flags, IJavaProject javaProject, IProgressMonitor monitor) {
