@@ -469,6 +469,17 @@ public class JavacBindingResolver extends BindingResolver {
 		return null;
 	}
 
+	IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
+		resolve();
+		Object o = this.converter.domToJavac.get(enumConstant);
+		if (o instanceof JCVariableDecl decl) {
+			if (!decl.type.isErroneous() || this.isRecoveringBindings) {
+				return canonicalize(new JavacVariableBinding(decl.sym, this));
+			}
+		}
+		return null;
+	}
+	
 	@Override
 	IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
 		resolve();
