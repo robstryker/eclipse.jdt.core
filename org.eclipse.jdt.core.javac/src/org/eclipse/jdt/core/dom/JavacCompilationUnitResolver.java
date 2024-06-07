@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,10 +40,13 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.compiler.InvalidInputException;
+import org.eclipse.jdt.core.dom.CompilationUnitResolver.IntArrayList;
 import org.eclipse.jdt.internal.compiler.batch.FileSystem.Classpath;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.AccessRestriction;
@@ -54,7 +58,14 @@ import org.eclipse.jdt.internal.compiler.impl.ITypeRequestor;
 import org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding;
 import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
 import org.eclipse.jdt.internal.compiler.lookup.PackageBinding;
+import org.eclipse.jdt.internal.compiler.util.HashtableOfObjectToInt;
 import org.eclipse.jdt.internal.compiler.util.Util;
+import org.eclipse.jdt.internal.core.BinaryMember;
+import org.eclipse.jdt.internal.core.BinaryModule;
+import org.eclipse.jdt.internal.core.LocalVariable;
+import org.eclipse.jdt.internal.core.SourceRefElement;
+import org.eclipse.jdt.internal.core.util.BindingKeyParser;
+import org.eclipse.jdt.internal.core.util.DOMFinder;
 import org.eclipse.jdt.internal.javac.JavacProblemConverter;
 import org.eclipse.jdt.internal.javac.JavacUtils;
 
@@ -175,6 +186,105 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 
 	}
 
+	private static class CustomBindingKeyParser extends BindingKeyParser {
+
+		private char[] secondarySimpleName;
+		private char[][] compoundName;
+
+		public CustomBindingKeyParser(String key) {
+			super(key);
+		}
+
+		@Override
+		public void consumeSecondaryType(char[] simpleTypeName) {
+			this.secondarySimpleName = simpleTypeName;
+		}
+
+		@Override
+		public void consumeFullyQualifiedName(char[] fullyQualifiedName) {
+			this.compoundName = CharOperation.splitOn('/', fullyQualifiedName);
+		}
+	}
+	
+	@Override
+	public IBinding[] resolve(IJavaElement[] elements, int apiLevel, Map<String, String> compilerOptions,
+			IJavaProject javaProject, WorkingCopyOwner owner, int flags, IProgressMonitor monitor) {
+		// Logic copied entirely from ECJCompilationUnitResolver
+		final int length = elements.length;
+		final HashMap sourceElementPositions = new HashMap(); // a map from ICompilationUnit to int[] (positions in elements)
+		int cuNumber = 0;
+		final HashtableOfObjectToInt binaryElementPositions = new HashtableOfObjectToInt(); // a map from String (binding key) to int (position in elements)
+		for (int i = 0; i < length; i++) {
+			IJavaElement element = elements[i];
+			if (!(element instanceof SourceRefElement))
+				throw new IllegalStateException(element + " is not part of a compilation unit or class file"); //$NON-NLS-1$
+			Object cu = element.getAncestor(IJavaElement.COMPILATION_UNIT);
+			if (cu != null) {
+				// source member
+				IntArrayList intList = (IntArrayList) sourceElementPositions.get(cu);
+				if (intList == null) {
+					sourceElementPositions.put(cu, intList = new IntArrayList());
+					cuNumber++;
+				}
+				intList.add(i);
+			} else {
+				// binary member or method argument
+				try {
+					String key;
+					if (element instanceof BinaryMember)
+						key = ((BinaryMember) element).getKey(true/*open to get resolved info*/);
+					else if (element instanceof LocalVariable)
+						key = ((LocalVariable) element).getKey(true/*open to get resolved info*/);
+					else if (element instanceof org.eclipse.jdt.internal.core.TypeParameter)
+						key = ((org.eclipse.jdt.internal.core.TypeParameter) element).getKey(true/*open to get resolved info*/);
+					else if (element instanceof BinaryModule)
+						key = ((BinaryModule) element).getKey(true);
+					else
+						throw new IllegalArgumentException(element + " has an unexpected type"); //$NON-NLS-1$
+					binaryElementPositions.put(key, i);
+				} catch (JavaModelException e) {
+					throw new IllegalArgumentException(element + " does not exist", e); //$NON-NLS-1$
+				}
+			}
+		}
+		ICompilationUnit[] cus = new ICompilationUnit[cuNumber];
+		sourceElementPositions.keySet().toArray(cus);
+
+		int bindingKeyNumber = binaryElementPositions.size();
+		String[] bindingKeys = new String[bindingKeyNumber];
+		binaryElementPositions.keysToArray(bindingKeys);
+
+		class Requestor extends ASTRequestor {
+			IBinding[] bindings = new IBinding[length];
+			Map<ICompilationUnit, CompilationUnit> map = new HashMap<>();
+			@Override
+			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
+				map.put(source, ast);
+				// TODO (jerome) optimize to visit the AST only once
+				IntArrayList intList = (IntArrayList) sourceElementPositions.get(source);
+				for (int i = 0; i < intList.length; i++) {
+					final int index = intList.list[i];
+					SourceRefElement element = (SourceRefElement) elements[index];
+					DOMFinder finder = new DOMFinder(ast, element, true/*resolve binding*/);
+					try {
+						finder.search();
+					} catch (JavaModelException e) {
+						throw new IllegalArgumentException(element + " does not exist", e); //$NON-NLS-1$
+					}
+					this.bindings[index] = finder.foundBinding;
+				}
+			}
+			@Override
+			public void acceptBinding(String bindingKey, IBinding binding) {
+				int index = binaryElementPositions.get(bindingKey);
+				this.bindings[index] = binding;
+			}
+		}
+		Requestor requestor = new Requestor();
+		resolve(cus, bindingKeys, requestor, apiLevel, compilerOptions, javaProject, owner, flags, monitor);
+		return requestor.bindings;
+	}
+
 	@Override
 	public void parse(ICompilationUnit[] compilationUnits, ASTRequestor requestor, int apiLevel,
 			Map<String, String> compilerOptions, int flags, IProgressMonitor monitor) {
@@ -192,10 +302,26 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			&& Arrays.stream(compilationUnits).map(ICompilationUnit::getJavaProject).distinct().count() == 1
 			&& Arrays.stream(compilationUnits).allMatch(org.eclipse.jdt.internal.compiler.env.ICompilationUnit.class::isInstance)) {
 			// all in same project, build together
-			return
+			Map<ICompilationUnit, CompilationUnit> map = new HashMap<>();
+			ASTRequestor r = new ASTRequestor() {
+				@Override
+				public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
+					map.put(source, ast);
+				}				
+			};
+			CompilationUnitResolver.FACADE.parse(compilationUnits, r, apiLevel, compilerOptions, flags, monitor);
+			
+			Map<ICompilationUnit, CompilationUnit> ret =
 				parse(Arrays.stream(compilationUnits).map(org.eclipse.jdt.internal.compiler.env.ICompilationUnit.class::cast).toArray(org.eclipse.jdt.internal.compiler.env.ICompilationUnit[]::new),
 					apiLevel, compilerOptions, flags, compilationUnits[0].getJavaProject(), monitor)
 				.entrySet().stream().collect(Collectors.toMap(entry -> (ICompilationUnit)entry.getKey(), entry -> entry.getValue()));
+			
+			Iterator<ICompilationUnit> it = map.keySet().iterator();
+			while(it.hasNext()) {
+				ICompilationUnit u = it.next();
+				map.get(u).subtreeMatch(new CustomASTMatcher(), ret.get(u));
+			}
+			return ret;
 		}
 		// build individually
 		Map<ICompilationUnit, CompilationUnit> res = new HashMap<>(compilationUnits.length, 1.f);
@@ -238,36 +364,22 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 	}
 
 	@Override
-	public IBinding[] resolve(IJavaElement[] elements, int apiLevel, Map<String, String> compilerOptions,
-			IJavaProject project, WorkingCopyOwner workingCopyOwner, int flags, IProgressMonitor monitor) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'resolve'");
-	}
-
-	@Override
 	public CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit,
 			boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths,
 			NodeSearcher nodeSearcher, int apiLevel, Map<String, String> compilerOptions,
 			WorkingCopyOwner workingCopyOwner, WorkingCopyOwner typeRootWorkingCopyOwner, int flags, IProgressMonitor monitor) {
-		// TODO currently only parse
+		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
 		CompilationUnit res = parse(new org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] { sourceUnit},
 				apiLevel, compilerOptions, flags, project, monitor).get(sourceUnit);
 		if (initialNeedsToResolveBinding) {
 			((JavacBindingResolver)res.ast.getBindingResolver()).isRecoveringBindings = (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
 			resolveBindings(res);
 		}
-		// For comparison
-//		CompilationUnit res2  = CompilationUnitResolver.FACADE.toCompilationUnit(sourceUnit, initialNeedsToResolveBinding, project, classpaths, nodeSearcher, apiLevel, compilerOptions, typeRootWorkingCopyOwner, typeRootWorkingCopyOwner, flags, monitor);
-//		//res.typeAndFlags=res2.typeAndFlags;
-//		String res1a = res.toString();
-//		String res2a = res2.toString();
-//
-//		AnnotationTypeDeclaration l1 = (AnnotationTypeDeclaration)res.types().get(0);
-//		AnnotationTypeDeclaration l2 = (AnnotationTypeDeclaration)res2.types().get(0);
-//		Object o1 = l1.bodyDeclarations().get(0);
-//		Object o2 = l2.bodyDeclarations().get(0);
+		
+		res2.subtreeMatch(new CustomASTMatcher(), res);
 		return res;
 	}
+
 
 	private Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> parse(org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] sourceUnits, int apiLevel, Map<String, String> compilerOptions,
 			int flags, IJavaProject javaProject, IProgressMonitor monitor) {
@@ -383,6 +495,8 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			}
 		} catch (IOException ex) {
 			ILog.get().error(ex.getMessage(), ex);
+		} catch( IllegalStateException ise) {
+			ILog.get().error(ise.getMessage(), ise);
 		}
 
 		return result;

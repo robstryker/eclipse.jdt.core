@@ -253,7 +253,7 @@ class JavacConverter {
 			Iterator<JCExpression> it = mods.iterator();
 			while(it.hasNext()) {
 				JCExpression jcpe = it.next();
-				Expression e = convertExpression(jcpe);
+				Expression e = convertExpression(jcpe, res);
 				if( e != null )
 					res.modules().add(e);
 			}
@@ -269,7 +269,7 @@ class JavacConverter {
 		Iterator<JCExpression> it = mods.iterator();
 		while(it.hasNext()) {
 			JCExpression jcpe = it.next();
-			Expression e = convertExpression(jcpe);
+			Expression e = convertExpression(jcpe, res);
 			if( e != null )
 				res.modules().add(e);
 		}
@@ -646,7 +646,7 @@ class JavacConverter {
 		res.modifiers().addAll(convert(javac.getModifiers(), res));
 		res.setType(convertToType(javac.getReturnType()));
 		if( javac.defaultValue != null) {
-			res.setDefault(convertExpression(javac.defaultValue));
+			res.setDefault(convertExpression(javac.defaultValue, res));
 		}
 		if (convertName(javac.getName()) instanceof SimpleName simpleName) {
 			res.setName(simpleName);
@@ -892,7 +892,7 @@ class JavacConverter {
 			}
 		}
 		if (javac.getInitializer() != null) {
-			res.setInitializer(convertExpression(javac.getInitializer()));
+			res.setInitializer(convertExpression(javac.getInitializer(), res));
 		}
 		return res;
 	}
@@ -937,7 +937,7 @@ class JavacConverter {
 			}
 		}
 		if (javac.getInitializer() != null) {
-			fragment.setInitializer(convertExpression(javac.getInitializer()));
+			fragment.setInitializer(convertExpression(javac.getInitializer(), fragment));
 		}
 		return fragment;
 	}
@@ -1024,7 +1024,7 @@ class JavacConverter {
 		}
 	}
 
-	private Expression convertExpressionImpl(JCExpression javac) {
+	private Expression convertExpressionImpl(JCExpression javac, ASTNode parent) {
 		if (javac instanceof JCIdent ident) {
 			if (Objects.equals(ident.name, Names.instance(this.context)._this)) {
 				ThisExpression res = this.ast.newThisExpression();
@@ -1034,7 +1034,7 @@ class JavacConverter {
 			return toName(ident);
 		}
 		if (javac instanceof JCLiteral literal) {
-			return convertLiteral(literal);
+			return convertLiteral(literal, parent);
 		}
 		if (javac instanceof JCFieldAccess fieldAccess) {
 			if (Objects.equals(Names.instance(this.context)._class, fieldAccess.getIdentifier())) {
@@ -1065,7 +1065,7 @@ class JavacConverter {
 			if (fieldAccess.getExpression() instanceof JCIdent parentFieldAccess && Objects.equals(Names.instance(this.context)._this, parentFieldAccess.getName())) {
 				FieldAccess res = this.ast.newFieldAccess();
 				commonSettings(res, javac);
-				res.setExpression(convertExpression(parentFieldAccess));
+				res.setExpression(convertExpression(parentFieldAccess, res));
 				if (convertName(fieldAccess.getIdentifier()) instanceof SimpleName name) {
 					res.setName(name);
 				}
@@ -1080,7 +1080,7 @@ class JavacConverter {
 			}
 			FieldAccess res = this.ast.newFieldAccess();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(fieldAccess.getExpression()));
+			res.setExpression(convertExpression(fieldAccess.getExpression(), res));
 			if (convertName(fieldAccess.getIdentifier()) instanceof SimpleName name) {
 				res.setName(name);
 			}
@@ -1096,7 +1096,12 @@ class JavacConverter {
 					JCFieldAccess fa = superCall1 ? ((JCFieldAccess)access.getExpression()) : access;
 					SuperMethodInvocation res2 = this.ast.newSuperMethodInvocation();
 					commonSettings(res2, javac);
-					methodInvocation.getArguments().stream().map(this::convertExpression).forEach(res2.arguments()::add);
+					for( JCExpression jce : methodInvocation.getArguments() ) {
+						Expression e = convertExpression(jce, res2);
+						if( e != null ) {
+							res2.arguments().add(e);
+						}
+					}
 					if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 						methodInvocation.getTypeArguments().stream()
 							.map(this::convertToType)
@@ -1127,7 +1132,12 @@ class JavacConverter {
 					JCFieldAccess fa = superCall1 ? ((JCFieldAccess)access.getExpression()) : access;
 					SuperMethodInvocation res2 = this.ast.newSuperMethodInvocation();
 					commonSettings(res2, javac);
-					methodInvocation.getArguments().stream().map(this::convertExpression).forEach(res.arguments()::add);
+					for( JCExpression jce : methodInvocation.getArguments() ) {
+						Expression e = convertExpression(jce, res2);
+						if( e != null ) {
+							res2.arguments().add(e);
+						}
+					}
 					if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
 						methodInvocation.getTypeArguments().stream()
 							.map(this::convertToType)
@@ -1143,12 +1153,15 @@ class JavacConverter {
 				if (convertName(access.getIdentifier()) instanceof SimpleName simpleName) {
 					res.setName(simpleName);
 				}
-				res.setExpression(convertExpression(access.getExpression()));
+				res.setExpression(convertExpression(access.getExpression(), res));
 			}
 			if (methodInvocation.getArguments() != null) {
-				methodInvocation.getArguments().stream()
-					.map(this::convertExpression)
-					.forEach(res.arguments()::add);
+				for( JCExpression jce : methodInvocation.getArguments() ) {
+					Expression e = convertExpression(jce, res);
+					if( e != null ) {
+						res.arguments().add(e);
+					}
+				}
 			}
 			if (methodInvocation.getTypeArguments() != null) {
 				if( this.ast.apiLevel != AST.JLS2_INTERNAL) {
@@ -1175,12 +1188,15 @@ class JavacConverter {
 				res.setAnonymousClassDeclaration(anon);
 			}
 			if (newClass.getArguments() != null) {
-				newClass.getArguments().stream()
-					.map(this::convertExpression)
-					.forEach(res.arguments()::add);
+				for( JCExpression jce : newClass.getArguments() ) {
+					Expression e = convertExpression(jce, res);
+					if( e != null ) {
+						res.arguments().add(e);
+					}
+				}
 			}
 			if (newClass.encl != null) {
-				res.setExpression(convertExpression(newClass.encl));
+				res.setExpression(convertExpression(newClass.encl, res));
 			}
 			if( newClass.getTypeArguments() != null && this.ast.apiLevel != AST.JLS2_INTERNAL) {
 				Iterator<JCExpression> it = newClass.getTypeArguments().iterator();
@@ -1196,11 +1212,11 @@ class JavacConverter {
 		if (javac instanceof JCBinary binary) {
 			InfixExpression res = this.ast.newInfixExpression();
 			commonSettings(res, javac);
-			Expression left = convertExpression(binary.getLeftOperand());
+			Expression left = convertExpression(binary.getLeftOperand(), res);
 			if (left != null) {
 				res.setLeftOperand(left);
 			}
-			Expression right = convertExpression(binary.getRightOperand());
+			Expression right = convertExpression(binary.getRightOperand(), res);
 			if (right != null) {
 				res.setRightOperand(right);
 			}
@@ -1232,7 +1248,7 @@ class JavacConverter {
 			if (unary.getTag() != Tag.POSTINC && unary.getTag() != Tag.POSTDEC) {
 				PrefixExpression res = this.ast.newPrefixExpression();
 				commonSettings(res, javac);
-				res.setOperand(convertExpression(unary.getExpression()));
+				res.setOperand(convertExpression(unary.getExpression(), res));
 				res.setOperator(switch (unary.getTag()) {
 					case POS -> PrefixExpression.Operator.PLUS;
 					case NEG -> PrefixExpression.Operator.MINUS;
@@ -1246,7 +1262,7 @@ class JavacConverter {
 			} else {
 				PostfixExpression res = this.ast.newPostfixExpression();
 				commonSettings(res, javac);
-				res.setOperand(convertExpression(unary.getExpression()));
+				res.setOperand(convertExpression(unary.getExpression(), res));
 				res.setOperator(switch (unary.getTag()) {
 					case POSTINC -> PostfixExpression.Operator.INCREMENT;
 					case POSTDEC -> PostfixExpression.Operator.DECREMENT;
@@ -1258,21 +1274,21 @@ class JavacConverter {
 		if (javac instanceof JCParens parens) {
 			ParenthesizedExpression res = this.ast.newParenthesizedExpression();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(parens.getExpression()));
+			res.setExpression(convertExpression(parens.getExpression(), res));
 			return res;
 		}
 		if (javac instanceof JCAssign assign) {
 			Assignment res = this.ast.newAssignment();
 			commonSettings(res, javac);
-			res.setLeftHandSide(convertExpression(assign.getVariable()));
-			res.setRightHandSide(convertExpression(assign.getExpression()));
+			res.setLeftHandSide(convertExpression(assign.getVariable(), res));
+			res.setRightHandSide(convertExpression(assign.getExpression(), res));
 			return res;
 		}
 		if (javac instanceof JCAssignOp assignOp) {
 			Assignment res = this.ast.newAssignment();
 			commonSettings(res, javac);
-			res.setLeftHandSide(convertExpression(assignOp.getVariable()));
-			res.setRightHandSide(convertExpression(assignOp.getExpression()));
+			res.setLeftHandSide(convertExpression(assignOp.getVariable(), res));
+			res.setRightHandSide(convertExpression(assignOp.getExpression(), res));
 			res.setOperator(switch (assignOp.getTag()) {
 				case PLUS_ASG -> Assignment.Operator.PLUS_ASSIGN;
 				case BITOR_ASG -> Assignment.Operator.BIT_OR_ASSIGN;
@@ -1293,7 +1309,7 @@ class JavacConverter {
 			if (jcInstanceOf.getType() != null) {
 				InstanceofExpression res = this.ast.newInstanceofExpression();
 				commonSettings(res, javac);
-				res.setLeftOperand(convertExpression(jcInstanceOf.getExpression()));
+				res.setLeftOperand(convertExpression(jcInstanceOf.getExpression(), res));
 				res.setRightOperand(convertToType(jcInstanceOf.getType()));
 				return res;
 			}
@@ -1301,27 +1317,27 @@ class JavacConverter {
 			if (jcPattern instanceof JCAnyPattern) {
 				InstanceofExpression res = this.ast.newInstanceofExpression();
 				commonSettings(res, javac);
-				res.setLeftOperand(convertExpression(jcInstanceOf.getExpression()));
+				res.setLeftOperand(convertExpression(jcInstanceOf.getExpression(), res));
 				throw new UnsupportedOperationException("Right operand not supported yet");
 //				return res;
 			}
 			PatternInstanceofExpression res = this.ast.newPatternInstanceofExpression();
 			commonSettings(res, javac);
-			res.setLeftOperand(convertExpression(jcInstanceOf.getExpression()));
+			res.setLeftOperand(convertExpression(jcInstanceOf.getExpression(), res));
 			res.setPattern(convert(jcPattern));
 			return res;
 		}
 		if (javac instanceof JCArrayAccess jcArrayAccess) {
 			ArrayAccess res = this.ast.newArrayAccess();
 			commonSettings(res, javac);
-			res.setArray(convertExpression(jcArrayAccess.getExpression()));
-			res.setIndex(convertExpression(jcArrayAccess.getIndex()));
+			res.setArray(convertExpression(jcArrayAccess.getExpression(), res));
+			res.setIndex(convertExpression(jcArrayAccess.getIndex(), res));
 			return res;
 		}
 		if (javac instanceof JCTypeCast jcCast) {
 			CastExpression res = this.ast.newCastExpression();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(jcCast.getExpression()));
+			res.setExpression(convertExpression(jcCast.getExpression(), res));
 			res.setType(convertToType(jcCast.getType()));
 			return res;
 		}
@@ -1353,7 +1369,7 @@ class JavacConverter {
 			} else {
 				ExpressionMethodReference res = this.ast.newExpressionMethodReference();
 				commonSettings(res, javac);
-				res.setExpression(convertExpression(jcMemberReference.getQualifierExpression()));
+				res.setExpression(convertExpression(jcMemberReference.getQualifierExpression(), res));
 				res.setName((SimpleName)convertName(jcMemberReference.getName()));
 				if (jcMemberReference.getTypeArguments() != null) {
 					jcMemberReference.getTypeArguments().stream()
@@ -1367,9 +1383,9 @@ class JavacConverter {
 		if (javac instanceof JCConditional jcCondition) {
 			ConditionalExpression res = this.ast.newConditionalExpression();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(jcCondition.getCondition()));
-			res.setThenExpression(convertExpression(jcCondition.getTrueExpression()));
-			res.setElseExpression(convertExpression(jcCondition.getFalseExpression()));
+			res.setExpression(convertExpression(jcCondition.getCondition(), res));
+			res.setThenExpression(convertExpression(jcCondition.getTrueExpression(), res));
+			res.setElseExpression(convertExpression(jcCondition.getFalseExpression(), res));
 			return res;
 		}
 		if (javac instanceof JCLambda jcLambda) {
@@ -1382,7 +1398,7 @@ class JavacConverter {
 			int arrowIndex = this.rawText.indexOf("->", jcLambda.getStartPosition());
 			int parenthesisIndex = this.rawText.indexOf(")", jcLambda.getStartPosition());
 			res.setParentheses(parenthesisIndex >= 0 && parenthesisIndex < arrowIndex);
-			ASTNode body = jcLambda.getBody() instanceof JCExpression expr ? convertExpression(expr) :
+			ASTNode body = jcLambda.getBody() instanceof JCExpression expr ? convertExpression(expr, res) :
 				jcLambda.getBody() instanceof JCStatement stmt ? convertStatement(stmt, res) :
 				null;
 			if( body != null )
@@ -1427,7 +1443,12 @@ class JavacConverter {
 				commonSettings(arrayType, jcNewArray.getType());
 				res.setType(arrayType);
 			}
-			jcNewArray.getDimensions().map(this::convertExpression).forEach(res.dimensions()::add);
+			for( JCExpression jce : jcNewArray.getDimensions() ) {
+				Expression e = convertExpression(jce, res);
+				if( e != null ) {
+					res.dimensions().add(e);
+				}
+			}
 			if (jcNewArray.getInitializers() != null) {
 				res.setInitializer(createArrayInitializerFromJCNewArray(jcNewArray));
 			}
@@ -1448,7 +1469,7 @@ class JavacConverter {
 			if( switchExpr instanceof JCParens jcp) {
 				switchExpr = jcp.getExpression();
 			}
-			res.setExpression(convertExpression(switchExpr));
+			res.setExpression(convertExpression(switchExpr, res));
 
 			List<JCCase> cases = jcSwitch.getCases();
 			Iterator<JCCase> it = cases.iterator();
@@ -1474,10 +1495,10 @@ class JavacConverter {
 						res.statements().add(s1);
 					}
 				} else if( next instanceof JCExpression jce) {
-					Expression s1 = convertExpression(jce);
+					// make a yield statement out of it??
+					YieldStatement r1 = this.ast.newYieldStatement();
+					Expression s1 = convertExpression(jce, r1);
 					if( s1 != null ) {
-						// make a yield statement out of it??
-						YieldStatement r1 = this.ast.newYieldStatement();
 						commonSettings(r1, javac);
 						r1.setExpression(s1);
 						res.statements().add(r1);
@@ -1489,8 +1510,8 @@ class JavacConverter {
 		return null;
 	}
 
-	private Expression convertExpression(JCExpression javac) {
-		Expression ret = convertExpressionImpl(javac);
+	private Expression convertExpression(JCExpression javac, ASTNode parent) {
+		Expression ret = convertExpressionImpl(javac, parent);
 		if( ret != null )
 			return ret;
 
@@ -1500,7 +1521,7 @@ class JavacConverter {
 				JCTree tree = error.getErrorTrees().get(0);
 				if (tree instanceof JCExpression nestedExpr) {
 					try {
-						return convertExpression(nestedExpr);
+						return convertExpression(nestedExpr, parent);
 					} catch (Exception ex) {
 						// pass-through: do not break when attempting such reconcile
 					}
@@ -1536,7 +1557,12 @@ class JavacConverter {
 		if( jcNewArray.getInitializers().size() > 0 ) {
 			commonSettings(initializer, jcNewArray.getInitializers().get(0));
 		}
-		jcNewArray.getInitializers().stream().map(this::convertExpression).forEach(initializer.expressions()::add);
+		for( JCExpression jce : jcNewArray.getInitializers() ) {
+			Expression e = convertExpression(jce, initializer);
+			if( e != null ) {
+				initializer.expressions().add(e);
+			}
+		}
 		return initializer;
 	}
 
@@ -1582,8 +1608,12 @@ class JavacConverter {
 	private SuperMethodInvocation convertSuperMethodInvocation(JCMethodInvocation javac) {
 		SuperMethodInvocation res = this.ast.newSuperMethodInvocation();
 		commonSettings(res, javac);
-		javac.getArguments().stream().map(this::convertExpression).forEach(res.arguments()::add);
-
+		for( JCExpression jce : javac.getArguments() ) {
+			Expression e = convertExpression(jce, res);
+			if( e != null ) {
+				res.arguments().add(e);
+			}
+		}
 		//res.setFlags(javac.getFlags() | ASTNode.MALFORMED);
 		if( this.ast.apiLevel > AST.JLS2_INTERNAL) {
 			javac.getTypeArguments().stream().map(this::convertToType).forEach(res.typeArguments()::add);
@@ -1599,7 +1629,12 @@ class JavacConverter {
 			// jdt expects semicolon to be part of the range
 			res.setSourceRange(res.getStartPosition(), res.getLength() + 1);
 		}
-		javac.getArguments().stream().map(this::convertExpression).forEach(res.arguments()::add);
+		for( JCExpression jce : javac.getArguments() ) {
+			Expression e = convertExpression(jce, res);
+			if( e != null ) {
+				res.arguments().add(e);
+			}
+		}
 
 		//res.setFlags(javac.getFlags() | ASTNode.MALFORMED);
 		if( this.ast.apiLevel > AST.JLS2_INTERNAL) {
@@ -1609,7 +1644,7 @@ class JavacConverter {
 				.forEach(res.typeArguments()::add);
 		}
 		if( javac.getMethodSelect() instanceof JCFieldAccess jcfa && jcfa.selected != null ) {
-			res.setExpression(convertExpression(jcfa.selected));
+			res.setExpression(convertExpression(jcfa.selected, res));
 		}
 		return res;
 	}
@@ -1618,7 +1653,12 @@ class JavacConverter {
 	private ConstructorInvocation convertThisConstructorInvocation(JCMethodInvocation javac) {
 		ConstructorInvocation res = this.ast.newConstructorInvocation();
 		commonSettings(res, javac);
-		javac.getArguments().stream().map(this::convertExpression).forEach(res.arguments()::add);
+		for( JCExpression jce : javac.getArguments() ) {
+			Expression e = convertExpression(jce, res);
+			if( e != null ) {
+				res.arguments().add(e);
+			}
+		}
 		if( this.ast.apiLevel > AST.JLS2_INTERNAL) {
 			javac.getTypeArguments().stream()
 				.map(this::convertToType)
@@ -1628,21 +1668,27 @@ class JavacConverter {
 		return res;
 	}
 
-	private Expression convertLiteral(JCLiteral literal) {
+	private Expression convertLiteral(JCLiteral literal, ASTNode parent) {
 		Object value = literal.getValue();
 		if (value instanceof Number number) {
 			char firstChar = number.toString().charAt(0);
-			if( firstChar != '-' ) {
+			boolean firstCharMinus = firstChar == '-';
+			int startPos = literal.getStartPosition();
+			int startPosPostSign = startPos;
+			if( firstCharMinus ) {
+				startPosPostSign++;
+			}
+			boolean useNumberLiteral = !firstCharMinus || (parent instanceof MethodInvocation);
+			if( useNumberLiteral ) {
 				NumberLiteral res = this.ast.newNumberLiteral();
 				commonSettings(res, literal);
-				String fromSrc = this.rawText.substring(res.getStartPosition(), res.getStartPosition() + res.getLength());
+				String fromSrc = this.rawText.substring(startPos, startPos + res.getLength());
 				res.setToken(fromSrc);
 				return res;
 			} else {
 				PrefixExpression res = this.ast.newPrefixExpression();
 				commonSettings(res, literal);
-
-				String fromSrc = this.rawText.substring(res.getStartPosition()+1, res.getStartPosition() + res.getLength());
+				String fromSrc = this.rawText.substring(startPosPostSign, startPos + res.getLength());
 				NumberLiteral operand = this.ast.newNumberLiteral();
 				commonSettings(operand, literal);
 				operand.setToken(fromSrc);
@@ -1692,7 +1738,7 @@ class JavacConverter {
 			ReturnStatement res = this.ast.newReturnStatement();
 			commonSettings(res, javac);
 			if (returnStatement.getExpression() != null) {
-				res.setExpression(convertExpression(returnStatement.getExpression()));
+				res.setExpression(convertExpression(returnStatement.getExpression(), res));
 			}
 			return res;
 		}
@@ -1723,8 +1769,9 @@ class JavacConverter {
 						}
 					}
 					if (tree instanceof JCExpression expr) {
-						Expression expression = convertExpression(expr);
-						ExpressionStatement res = this.ast.newExpressionStatement(expression);
+						ExpressionStatement res = new ExpressionStatement(this.ast);
+						Expression expression = convertExpression(expr, res);
+						res.setExpression(expression);
 						commonSettings(res, javac);
 						return res;
 					}
@@ -1751,7 +1798,7 @@ class JavacConverter {
 			if( uniqueCaseFound ) {
 				return convertSuperConstructorInvocation((JCMethodInvocation)jcExpressionStatement.getExpression());
 			}
-			ExpressionStatement res = this.ast.newExpressionStatement(convertExpression(jcExpressionStatement.getExpression()));
+			ExpressionStatement res = this.ast.newExpressionStatement(convertExpression(jcExpressionStatement.getExpression(), parent));
 			commonSettings(res, javac);
 			return res;
 		}
@@ -1792,7 +1839,7 @@ class JavacConverter {
 		if (javac instanceof JCThrow throwStatement) {
 			ThrowStatement res = this.ast.newThrowStatement();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(throwStatement.getExpression()));
+			res.setExpression(convertExpression(throwStatement.getExpression(), res));
 			return res;
 		}
 		if (javac instanceof JCTry tryStatement) {
@@ -1805,7 +1852,7 @@ class JavacConverter {
 			if( syncExpr instanceof JCParens jcp) {
 				syncExpr = jcp.getExpression();
 			}
-			res.setExpression(convertExpression(syncExpr));
+			res.setExpression(convertExpression(syncExpr, res));
 			res.setBody(convertBlock(jcSynchronized.getBlock()));
 			return res;
 		}
@@ -1822,7 +1869,7 @@ class JavacConverter {
 					res.initializers().add(expr);
 			}
 			if (jcForLoop.getCondition() != null) {
-				Expression expr = convertExpression(jcForLoop.getCondition());
+				Expression expr = convertExpression(jcForLoop.getCondition(), res);
 				if( expr != null )
 					res.setExpression(expr);
 			}
@@ -1840,7 +1887,7 @@ class JavacConverter {
 				EnhancedForStatement res = this.ast.newEnhancedForStatement();
 				commonSettings(res, javac);
 				res.setParameter((SingleVariableDeclaration)convertVariableDeclaration(jcEnhancedForLoop.getVariable()));
-				Expression expr = convertExpression(jcEnhancedForLoop.getExpression());
+				Expression expr = convertExpression(jcEnhancedForLoop.getExpression(), res);
 				if( expr != null )
 					res.setExpression(expr);
 				Statement stmt = convertStatement(jcEnhancedForLoop.getStatement(), res);
@@ -1868,7 +1915,7 @@ class JavacConverter {
 			if( switchExpr instanceof JCParens jcp) {
 				switchExpr = jcp.getExpression();
 			}
-			res.setExpression(convertExpression(switchExpr));
+			res.setExpression(convertExpression(switchExpr, res));
 			jcSwitch.getCases().stream()
 				.flatMap(switchCase -> {
 					int numStatements = switchCase.getStatements() != null ? switchCase.getStatements().size() : 0;
@@ -1889,7 +1936,7 @@ class JavacConverter {
 			if( this.ast.apiLevel >= AST.JLS14_INTERNAL) {
 				if (jcCase.getGuard() != null && (jcCase.getLabels().size() > 1 || jcCase.getLabels().get(0) instanceof JCPatternCaseLabel)) {
 					GuardedPattern guardedPattern = this.ast.newGuardedPattern();
-					guardedPattern.setExpression(convertExpression(jcCase.getGuard()));
+					guardedPattern.setExpression(convertExpression(jcCase.getGuard(), guardedPattern));
 					if (jcCase.getLabels().length() > 1) {
 						int start = Integer.MAX_VALUE;
 						int end = Integer.MIN_VALUE;
@@ -1921,13 +1968,18 @@ class JavacConverter {
 					guardedPattern.setSourceRange(start, end - start);
 					res.expressions().add(guardedPattern);
 				} else {
-					jcCase.getExpressions().stream().map(this::convertExpression).forEach(res.expressions()::add);
+					for (JCExpression jce : jcCase.getExpressions()) {
+						Expression e = convertExpression(jce, res);
+						if( e != null ) {
+							res.expressions().add(e);
+						}
+					}
 				}
 				res.setSwitchLabeledRule(jcCase.getCaseKind() == CaseKind.RULE);
 			} else {
 				List<JCExpression> l = jcCase.getExpressions();
 				if( l.size() == 1 ) {
-					res.setExpression(convertExpression(l.get(0)));
+					res.setExpression(convertExpression(l.get(0), res));
 				} else if( l.size() == 0 ) {
 					res.setExpression(null);
 				}
@@ -1942,7 +1994,7 @@ class JavacConverter {
 			if( expr instanceof JCParens jcp) {
 				expr = jcp.getExpression();
 			}
-			res.setExpression(convertExpression(expr));
+			res.setExpression(convertExpression(expr, res));
 			Statement body = convertStatement(jcWhile.getStatement(), res);
 			if( body != null )
 				res.setBody(body);
@@ -1955,7 +2007,7 @@ class JavacConverter {
 			if( expr instanceof JCParens jcp) {
 				expr = jcp.getExpression();
 			}
-			Expression expr1 = convertExpression(expr);
+			Expression expr1 = convertExpression(expr, res);
 			if( expr != null )
 				res.setExpression(expr1);
 
@@ -1967,7 +2019,7 @@ class JavacConverter {
 		if (javac instanceof JCYield jcYield) {
 			YieldStatement res = this.ast.newYieldStatement();
 			commonSettings(res, javac);
-			res.setExpression(convertExpression(jcYield.getValue()));
+			res.setExpression(convertExpression(jcYield.getValue(), res));
 			return res;
 		}
 		if (javac instanceof JCContinue jcContinue) {
@@ -1990,11 +2042,11 @@ class JavacConverter {
 		if (javac instanceof JCAssert jcAssert) {
 			AssertStatement res =this.ast.newAssertStatement();
 			commonSettings(res, javac);
-			Expression expr = convertExpression(jcAssert.getCondition());
+			Expression expr = convertExpression(jcAssert.getCondition(), res);
 			if( expr != null )
 				res.setExpression(expr);
 			if( jcAssert.getDetail() != null ) {
-				Expression det = convertExpression(jcAssert.getDetail());
+				Expression det = convertExpression(jcAssert.getDetail(), res);
 				if( det != null )
 					res.setMessage(det);
 			}
@@ -2015,7 +2067,7 @@ class JavacConverter {
 
 	private Expression convertStatementToExpression(JCStatement javac, ASTNode parent) {
 		if (javac instanceof JCExpressionStatement jcExpressionStatement) {
-			return convertExpression(jcExpressionStatement.getExpression());
+			return convertExpression(jcExpressionStatement.getExpression(), parent);
 		}
 		Statement javacStatement = convertStatement(javac, parent);
 		if (javacStatement instanceof VariableDeclarationStatement decl && decl.fragments().size() == 1) {
@@ -2147,9 +2199,9 @@ class JavacConverter {
 		if (javac.getCondition() != null) {
 			JCExpression expr = javac.getCondition();
 			if( expr instanceof JCParens jpc) {
-				res.setExpression(convertExpression(jpc.getExpression()));
+				res.setExpression(convertExpression(jpc.getExpression(), res));
 			} else {
-				res.setExpression(convertExpression(expr));
+				res.setExpression(convertExpression(expr, res));
 			}
 		}
 		if (javac.getThenStatement() != null) {
@@ -2338,7 +2390,7 @@ class JavacConverter {
 			JCTree value = javac.getArguments().get(0);
 			if (value != null) {
 				if( value instanceof JCExpression jce) {
-					result.setValue(convertExpression(jce));
+					result.setValue(convertExpression(jce, result));
 				} else {
 					result.setValue(toName(value));
 				}
@@ -2367,10 +2419,15 @@ class JavacConverter {
 						if (jcass.rhs instanceof JCNewArray jcNewArray) {
 							ArrayInitializer initializer = this.ast.newArrayInitializer();
 							commonSettings(initializer, javac);
-							jcNewArray.getInitializers().stream().map(this::convertExpression).forEach(initializer.expressions()::add);
+							for( JCExpression jce : jcNewArray.getInitializers()) {
+								Expression e = convertExpression(jce, initializer);
+								if( e != null ) {
+									initializer.expressions().add(e);
+								}
+							}
 							value = initializer;
 						} else {
-							value = convertExpression(jcass.rhs);
+							value = convertExpression(jcass.rhs, pair);
 						}
 						commonSettings(value, jcass.rhs);
 						pair.setValue(value);
@@ -2736,7 +2793,7 @@ class JavacConverter {
 					if( jcnc.getArguments() != null ) {
 						Iterator<JCExpression> it = jcnc.getArguments().iterator();
 						while(it.hasNext()) {
-							Expression e = convertExpression(it.next());
+							Expression e = convertExpression(it.next(), enumConstantDeclaration);
 							if( e != null ) {
 								enumConstantDeclaration.arguments().add(e);
 							}
