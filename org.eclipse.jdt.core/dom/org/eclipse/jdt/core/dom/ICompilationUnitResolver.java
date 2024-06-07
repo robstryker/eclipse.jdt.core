@@ -25,7 +25,7 @@ import org.eclipse.jdt.internal.compiler.batch.FileSystem.Classpath;
  *
  * @since 3.38
  */
-public interface ICompilationUnitResolver {
+interface ICompilationUnitResolver {
 	/**
 	 * Resolve the given source paths with the following options.
 	 *
