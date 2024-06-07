@@ -23,7 +23,6 @@ class CompilationUnitResolverDiscovery {
 	private static boolean ERROR_LOGGED = false;
 
 
-	@SuppressWarnings("unchecked")
 	static ICompilationUnitResolver getInstance() {
 		String compilationUnitResolverId = System.getProperty(ICompilationUnitResolver.class.getSimpleName());
 		IExtensionPoint extension = Platform.getExtensionRegistry().getExtensionPoint(JavaCore.PLUGIN_ID, COMPILATION_UNIT_RESOLVER_EXTPOINT_ID);
@@ -32,21 +31,20 @@ class CompilationUnitResolverDiscovery {
 			for (IExtension ext : extensions) {
 				IConfigurationElement[] configElements = ext.getConfigurationElements();
 				for (final IConfigurationElement configElement : configElements) {
-					String elementId = configElement.getAttribute("id");
+					String elementId = configElement.getAttribute("id"); //$NON-NLS-1$
 					if( compilationUnitResolverId.equals(elementId)) {
 						String elementName =configElement.getName();
 						if (!("resolver".equals(elementName))) { //$NON-NLS-1$
 							continue;
 						}
 						try {
-							Object executableExtension = configElement.createExecutableExtension("class");
+							Object executableExtension = configElement.createExecutableExtension("class"); //$NON-NLS-1$
 							if( executableExtension instanceof ICompilationUnitResolver icur) {
 								return icur;
 							}
 						} catch (CoreException e) {
-							e.printStackTrace();
 							if( !ERROR_LOGGED) {
-								ILog.get().error("Could not instantiate ICompilationUnitResolver: '" + elementId + "' with class: " + configElement.getAttribute("class"), e); //$NON-NLS-1$
+								ILog.get().error("Could not instantiate ICompilationUnitResolver: '" + elementId + "' with class: " + configElement.getAttribute("class"), e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 								ERROR_LOGGED = true;
 							}
 						}
