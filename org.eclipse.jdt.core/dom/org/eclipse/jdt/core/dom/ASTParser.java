@@ -234,7 +234,7 @@ public class ASTParser {
 	ASTParser(int level) {
 		DOMASTUtil.checkASTLevel(level);
 		this.apiLevel = level;
-		this.unitResolver = ICompilationUnitResolver.getInstance();
+		this.unitResolver = CompilationUnitResolverDiscovery.getInstance();
 		initializeDefaults();
 	}
 
