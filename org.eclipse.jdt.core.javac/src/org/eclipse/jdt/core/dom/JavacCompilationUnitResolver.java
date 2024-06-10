@@ -74,7 +74,11 @@ import com.sun.tools.javac.util.DiagnosticSource;
  * Allows to create and resolve DOM ASTs using Javac
  * @implNote Cannot move to another package because parent class is package visible only
  */
-class JavacCompilationUnitResolver implements ICompilationUnitResolver {
+public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
+	public JavacCompilationUnitResolver() {
+		// 0-arg constructor
+	}
+	
 	private interface GenericRequestor {
 		public void acceptBinding(String bindingKey, IBinding binding);
 	}
