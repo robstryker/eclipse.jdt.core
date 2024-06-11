@@ -1165,7 +1165,7 @@ public class ASTParser {
 				break;
 			case K_COMPILATION_UNIT :
 				try {
-					NodeSearcher searcher = null;
+					boolean useSearcher = false;
 					org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit = null;
 					WorkingCopyOwner wcOwner = this.workingCopyOwner;
 					if (this.typeRoot instanceof ClassFileWorkingCopy) {
@@ -1233,13 +1233,13 @@ public class ASTParser {
 						throw new IllegalStateException();
 					}
 					if ((this.bits & CompilationUnitResolver.PARTIAL) != 0) {
-						searcher = new NodeSearcher(this.focalPointPosition);
+						useSearcher = true;
 					}
 					int flags = 0;
 					if ((this.bits & CompilationUnitResolver.STATEMENT_RECOVERY) != 0) {
 						flags |= ICompilationUnit.ENABLE_STATEMENTS_RECOVERY;
 					}
-					if (searcher == null && ((this.bits & CompilationUnitResolver.IGNORE_METHOD_BODIES) != 0)) {
+					if (!useSearcher && ((this.bits & CompilationUnitResolver.IGNORE_METHOD_BODIES) != 0)) {
 						flags |= ICompilationUnit.IGNORE_METHOD_BODIES;
 					}
 
@@ -1249,7 +1249,7 @@ public class ASTParser {
 						}
 					}
 
-					CompilationUnit result2 = this.unitResolver.toCompilationUnit(sourceUnit, needToResolveBindings, this.project, getClasspath(), searcher, this.apiLevel, this.compilerOptions, this.workingCopyOwner, wcOwner, flags, monitor);
+					CompilationUnit result2 = this.unitResolver.toCompilationUnit(sourceUnit, needToResolveBindings, this.project, getClasspath(), useSearcher ? this.focalPointPosition : -1, this.apiLevel, this.compilerOptions, this.workingCopyOwner, wcOwner, flags, monitor);
 					result2.setTypeRoot(this.typeRoot);
 					return result2;
 				} finally {
