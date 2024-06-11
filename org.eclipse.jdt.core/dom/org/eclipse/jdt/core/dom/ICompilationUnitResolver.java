@@ -37,6 +37,21 @@ public interface ICompilationUnitResolver {
 			Map<String, String> compilerOptions, IJavaProject project, WorkingCopyOwner workingCopyOwner, int flags,
 			IProgressMonitor monitor);
 
-	CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit, final boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths, NodeSearcher nodeSearcher,
+	/**
+	 *
+	 * @param sourceUnit
+	 * @param initialNeedsToResolveBinding
+	 * @param project
+	 * @param classpaths
+	 * @param focalPosition a position to focus on, or -1 if N/A
+	 * @param apiLevel
+	 * @param compilerOptions
+	 * @param parsedUnitWorkingCopyOwner
+	 * @param typeRootWorkingCopyOwner
+	 * @param flags
+	 * @param monitor
+	 * @return
+	 */
+	CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit, final boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths, int focalPosition,
 			int apiLevel, Map<String, String> compilerOptions, WorkingCopyOwner parsedUnitWorkingCopyOwner, WorkingCopyOwner typeRootWorkingCopyOwner, int flags, IProgressMonitor monitor);
 }
