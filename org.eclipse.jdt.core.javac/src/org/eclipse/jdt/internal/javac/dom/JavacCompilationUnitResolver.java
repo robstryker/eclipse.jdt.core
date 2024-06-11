@@ -61,7 +61,6 @@ import org.eclipse.jdt.core.dom.JavacEnhancementPackagePrivateUtility;
 import org.eclipse.jdt.core.dom.JavacEnhancementPackagePrivateUtility.InternalNameEnvironmentWithProgress;
 import org.eclipse.jdt.core.dom.Javadoc;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.NodeSearcher;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -366,8 +365,9 @@ public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 	@Override
 	public CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit,
 			boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths,
-			NodeSearcher nodeSearcher, int apiLevel, Map<String, String> compilerOptions,
+			int focalPosition, int apiLevel, Map<String, String> compilerOptions,
 			WorkingCopyOwner workingCopyOwner, WorkingCopyOwner typeRootWorkingCopyOwner, int flags, IProgressMonitor monitor) {
+		
 		// TODO currently only parse
 		CompilationUnit res = parse(new org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] { sourceUnit},
 				apiLevel, compilerOptions, flags, project, monitor).get(sourceUnit);
