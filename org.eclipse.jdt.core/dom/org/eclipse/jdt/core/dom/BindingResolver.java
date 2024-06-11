@@ -30,13 +30,14 @@ import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
  * </p>
  *
  * @see AST#getBindingResolver
+ * @since 3.38
  */
-class BindingResolver {
+public class BindingResolver {
 
 	/**
 	 * Creates a binding resolver.
 	 */
-	BindingResolver() {
+	public BindingResolver() {
 		// default implementation: do nothing
 	}
 
@@ -79,7 +80,7 @@ class BindingResolver {
 	 * @return the corresponding node where the bindings is declared,
 	 *    or <code>null</code> if none
 	 */
-	ASTNode findDeclaringNode(IBinding binding) {
+	public ASTNode findDeclaringNode(IBinding binding) {
 		return null;
 	}
 
@@ -94,7 +95,7 @@ class BindingResolver {
 	 * @return the corresponding node where the bindings is declared,
 	 *    or <code>null</code> if none
 	 */
-	ASTNode findDeclaringNode(String bindingKey) {
+	public ASTNode findDeclaringNode(String bindingKey) {
 		return null;
 	}
 
@@ -109,7 +110,7 @@ class BindingResolver {
 	 * @return the corresponding node where the bindings is declared,
 	 *    or <code>null</code> if none
 	 */
-	ASTNode findDeclaringNode(IAnnotationBinding instance) {
+	public ASTNode findDeclaringNode(IAnnotationBinding instance) {
 		return null;
 	}
 
@@ -396,7 +397,7 @@ class BindingResolver {
 	 * @return the binding for the constructor being invoked, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveConstructor(ClassInstanceCreation expression) {
+	public IMethodBinding resolveConstructor(ClassInstanceCreation expression) {
 		return null;
 	}
 
@@ -418,7 +419,7 @@ class BindingResolver {
 	 * @return the binding for the constructor being invoked, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveConstructor(ConstructorInvocation expression) {
+	public IMethodBinding resolveConstructor(ConstructorInvocation expression) {
 		return null;
 	}
 	/**
@@ -439,7 +440,7 @@ class BindingResolver {
 	 * @return the binding for the constructor being invoked, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveConstructor(EnumConstantDeclaration enumConstantDeclaration) {
+	public IMethodBinding resolveConstructor(EnumConstantDeclaration enumConstantDeclaration) {
 		return null;
 	}
 	/**
@@ -460,7 +461,7 @@ class BindingResolver {
 	 * @return the binding for the constructor being invoked, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveConstructor(SuperConstructorInvocation expression) {
+	public IMethodBinding resolveConstructor(SuperConstructorInvocation expression) {
 		return null;
 	}
 	/**
@@ -481,7 +482,7 @@ class BindingResolver {
 	 * @return the binding for the type of the given expression, or
 	 *    <code>null</code> if no binding is available
 	 */
-	ITypeBinding resolveExpressionType(Expression expression) {
+	public ITypeBinding resolveExpressionType(Expression expression) {
 		return null;
 	}
 
@@ -502,7 +503,7 @@ class BindingResolver {
 	 * @return the binding for the given field access, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IVariableBinding resolveField(FieldAccess fieldAccess) {
+	public IVariableBinding resolveField(FieldAccess fieldAccess) {
 		return null;
 	}
 
@@ -523,7 +524,7 @@ class BindingResolver {
 	 * @return the binding for the given field access, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IVariableBinding resolveField(SuperFieldAccess fieldAccess) {
+	public IVariableBinding resolveField(SuperFieldAccess fieldAccess) {
 		return null;
 	}
 
@@ -544,7 +545,7 @@ class BindingResolver {
 	 *         (for single-type imports), or <code>null</code> if no binding is
 	 *         available
 	 */
-	IBinding resolveImport(ImportDeclaration importDeclaration) {
+	public IBinding resolveImport(ImportDeclaration importDeclaration) {
 		return null;
 	}
 
@@ -567,7 +568,7 @@ class BindingResolver {
 	 *    if no binding is available
 	 * @since 3.0
 	 */
-	IMethodBinding resolveMember(AnnotationTypeMemberDeclaration member) {
+	public IMethodBinding resolveMember(AnnotationTypeMemberDeclaration member) {
 		return null;
 	}
 
@@ -588,7 +589,7 @@ class BindingResolver {
 	 * @return the binding for the given method declaration, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveMethod(MethodDeclaration method) {
+	public IMethodBinding resolveMethod(MethodDeclaration method) {
 		return null;
 	}
 
@@ -610,7 +611,7 @@ class BindingResolver {
 	 *    <code>null</code> if no binding is available
 	 * @since 3.10
 	 */
-	IMethodBinding resolveMethod(MethodReference methodReference) {
+	public IMethodBinding resolveMethod(MethodReference methodReference) {
 		return null;
 	}
 
@@ -631,7 +632,7 @@ class BindingResolver {
 	 * @return the binding for the given lambda expression, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveMethod(LambdaExpression lambda) {
+	public IMethodBinding resolveMethod(LambdaExpression lambda) {
 		return null;
 	}
 
@@ -652,7 +653,7 @@ class BindingResolver {
 	 * @return the binding for the given method invocation, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveMethod(MethodInvocation method) {
+	public IMethodBinding resolveMethod(MethodInvocation method) {
 		return null;
 	}
 
@@ -673,7 +674,7 @@ class BindingResolver {
 	 * @return the binding for the given method invocation, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IMethodBinding resolveMethod(SuperMethodInvocation method) {
+	public IMethodBinding resolveMethod(SuperMethodInvocation method) {
 		return null;
 	}
 
@@ -696,7 +697,7 @@ class BindingResolver {
 	 *
 	 * @since 3.14
 	 */
-	IModuleBinding resolveModule(ModuleDeclaration module) {
+	public IModuleBinding resolveModule(ModuleDeclaration module) {
 		return null;
 	}
 
@@ -716,7 +717,7 @@ class BindingResolver {
 	 * @return the binding for the name, or <code>null</code> if no binding is
 	 *    available
 	 */
-	IBinding resolveName(Name name) {
+	public IBinding resolveName(Name name) {
 		return null;
 	}
 
@@ -735,7 +736,7 @@ class BindingResolver {
 	 * @return the binding for the given package declaration, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IPackageBinding resolvePackage(PackageDeclaration pkg) {
+	public IPackageBinding resolvePackage(PackageDeclaration pkg) {
 		return null;
 	}
 
@@ -756,7 +757,7 @@ class BindingResolver {
 	 *    available
 	 * @since 3.0
 	 */
-	IBinding resolveReference(MemberRef ref) {
+	public IBinding resolveReference(MemberRef ref) {
 		return null;
 	}
 
@@ -777,7 +778,7 @@ class BindingResolver {
 	 *    available
 	 * @since 3.2
 	 */
-	IMemberValuePairBinding resolveMemberValuePair(MemberValuePair memberValuePair) {
+	public IMemberValuePairBinding resolveMemberValuePair(MemberValuePair memberValuePair) {
 		return null;
 	}
 
@@ -798,7 +799,7 @@ class BindingResolver {
 	 *    available
 	 * @since 3.0
 	 */
-	IBinding resolveReference(MethodRef ref) {
+	public IBinding resolveReference(MethodRef ref) {
 		return null;
 	}
 
@@ -821,7 +822,7 @@ class BindingResolver {
 	 *    if no binding is available
 	 * @since 3.0
 	 */
-	ITypeBinding resolveType(AnnotationTypeDeclaration type) {
+	public ITypeBinding resolveType(AnnotationTypeDeclaration type) {
 		return null;
 	}
 
@@ -843,7 +844,7 @@ class BindingResolver {
 	 * @return the binding for the given class declaration, or <code>null</code>
 	 *    if no binding is available
 	 */
-	ITypeBinding resolveType(AnonymousClassDeclaration type) {
+	public ITypeBinding resolveType(AnonymousClassDeclaration type) {
 		return null;
 	}
 
@@ -866,7 +867,7 @@ class BindingResolver {
 	 *    if no binding is available
 	 * @since 3.0
 	 */
-	ITypeBinding resolveType(EnumDeclaration type) {
+	public ITypeBinding resolveType(EnumDeclaration type) {
 		return null;
 	}
 
@@ -889,7 +890,7 @@ class BindingResolver {
 	 *    if no binding is available
 	 * @since 3.22
 	 */
-	ITypeBinding resolveType(RecordDeclaration type) {
+	public ITypeBinding resolveType(RecordDeclaration type) {
 		return null;
 	}
 
@@ -910,7 +911,7 @@ class BindingResolver {
 	 * @return the binding for the given type, or <code>null</code>
 	 *    if no binding is available
 	 */
-	ITypeBinding resolveType(Type type) {
+	public ITypeBinding resolveType(Type type) {
 		return null;
 	}
 
@@ -933,11 +934,11 @@ class BindingResolver {
 	 * @return the binding for the given type declaration, or <code>null</code>
 	 *    if no binding is available
 	 */
-	ITypeBinding resolveType(TypeDeclaration type) {
+	public ITypeBinding resolveType(TypeDeclaration type) {
 		return null;
 	}
 
-	ITypeBinding resolveType(ImplicitTypeDeclaration type) {
+	public ITypeBinding resolveType(ImplicitTypeDeclaration type) {
 		return null;
 	}
 
@@ -960,7 +961,7 @@ class BindingResolver {
 	 *    if no binding is available
 	 * @since 3.1
 	 */
-	ITypeBinding resolveTypeParameter(TypeParameter typeParameter) {
+	public ITypeBinding resolveTypeParameter(TypeParameter typeParameter) {
 		return null;
 	}
 
@@ -981,7 +982,7 @@ class BindingResolver {
 	 *    <code>null</code> if no binding is available
 	 * @since 3.0
 	 */
-	IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
+	public IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
 		return null;
 	}
 
@@ -1005,7 +1006,7 @@ class BindingResolver {
 	 * @return the binding for the given variable declaration, or
 	 *    <code>null</code> if no binding is available
 	 */
-	IVariableBinding resolveVariable(VariableDeclaration variable) {
+	public IVariableBinding resolveVariable(VariableDeclaration variable) {
 		return null;
 	}
 
@@ -1026,7 +1027,7 @@ class BindingResolver {
 	 *   named type is not considered well known or if no binding can be found
 	 *   for it
 	 */
-	ITypeBinding resolveWellKnownType(String name) {
+	public ITypeBinding resolveWellKnownType(String name) {
 		return null;
 	}
 
@@ -1045,7 +1046,7 @@ class BindingResolver {
 	 * @return the DOM annotation representation for the given ast node, or
 	 *    <code>null</code> if none is available
 	 */
-	IAnnotationBinding resolveAnnotation(Annotation annotation) {
+	public IAnnotationBinding resolveAnnotation(Annotation annotation) {
 		return null;
 	}
 
@@ -1068,7 +1069,7 @@ class BindingResolver {
 	 * dimensions
 	 * @throws IllegalArgumentException if the type binding represents the <code>void</code> type binding
 	 */
-	ITypeBinding resolveArrayType(ITypeBinding typeBinding, int dimensions) {
+	public ITypeBinding resolveArrayType(ITypeBinding typeBinding, int dimensions) {
 		return null;
 	}
 

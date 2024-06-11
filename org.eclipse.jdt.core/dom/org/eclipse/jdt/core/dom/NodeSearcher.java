@@ -23,7 +23,10 @@ import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
 
-class NodeSearcher extends ASTVisitor {
+/**
+ * @since 3.38
+ */
+public class NodeSearcher extends ASTVisitor {
 	public org.eclipse.jdt.internal.compiler.ast.ASTNode found;
 	public TypeDeclaration enclosingType;
 	public int position;
