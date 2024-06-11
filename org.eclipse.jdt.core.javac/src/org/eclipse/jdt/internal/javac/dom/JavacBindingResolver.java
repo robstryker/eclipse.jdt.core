@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.core.dom;
+package org.eclipse.jdt.internal.javac.dom;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -21,14 +21,44 @@ import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.internal.javac.dom.JavacAnnotationBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacMemberValuePairBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacMethodBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacModuleBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacPackageBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacTypeBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacTypeVariableBinding;
-import org.eclipse.jdt.internal.javac.dom.JavacVariableBinding;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.Annotation;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.BindingResolver;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.ConstructorInvocation;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
+import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.IAnnotationBinding;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.IModuleBinding;
+import org.eclipse.jdt.core.dom.IPackageBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.ImportDeclaration;
+import org.eclipse.jdt.core.dom.LambdaExpression;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.MethodReference;
+import org.eclipse.jdt.core.dom.ModuleDeclaration;
+import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.PackageDeclaration;
+import org.eclipse.jdt.core.dom.ParameterizedType;
+import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.core.dom.RecordDeclaration;
+import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.SimpleType;
+import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
+import org.eclipse.jdt.core.dom.SuperFieldAccess;
+import org.eclipse.jdt.core.dom.Type;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.TypeParameter;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 
 import com.sun.source.util.JavacTask;
 import com.sun.tools.javac.code.Attribute;
@@ -79,7 +109,7 @@ public class JavacBindingResolver extends BindingResolver {
 	private Map<Symbol, ASTNode> symbolToDom;
 	public final IJavaProject javaProject;
 	private JavacConverter converter;
-	boolean isRecoveringBindings = false;
+	public boolean isRecoveringBindings = false;
 
 	public class Bindings {
 		private Map<String, JavacAnnotationBinding> annotationBindings = new HashMap<>();
@@ -233,7 +263,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveType(Type type) {
+	public ITypeBinding resolveType(Type type) {
 		resolve();
 		JCTree jcTree = this.converter.domToJavac.get(type);
 		if (jcTree instanceof JCIdent ident && ident.type != null) {
@@ -280,7 +310,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveType(AnnotationTypeDeclaration type) {
+	public ITypeBinding resolveType(AnnotationTypeDeclaration type) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(type);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
@@ -290,7 +320,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveType(RecordDeclaration type) {
+	public ITypeBinding resolveType(RecordDeclaration type) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(type);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
@@ -301,7 +331,7 @@ public class JavacBindingResolver extends BindingResolver {
 
 
 	@Override
-	ITypeBinding resolveType(TypeDeclaration type) {
+	public ITypeBinding resolveType(TypeDeclaration type) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(type);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
@@ -311,7 +341,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveType(EnumDeclaration enumDecl) {
+	public ITypeBinding resolveType(EnumDeclaration enumDecl) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(enumDecl);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
@@ -321,7 +351,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveType(AnonymousClassDeclaration anonymousClassDecl) {
+	public ITypeBinding resolveType(AnonymousClassDeclaration anonymousClassDecl) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(anonymousClassDecl);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
@@ -329,7 +359,7 @@ public class JavacBindingResolver extends BindingResolver {
 		}
 		return null;
 	}
-	ITypeBinding resolveTypeParameter(TypeParameter typeParameter) {
+	public ITypeBinding resolveTypeParameter(TypeParameter typeParameter) {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(typeParameter);
 		if (javacNode instanceof JCTypeParameter jcClassDecl) {
@@ -339,7 +369,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IVariableBinding resolveField(FieldAccess fieldAccess) {
+	public IVariableBinding resolveField(FieldAccess fieldAccess) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(fieldAccess);
 		if (javacElement instanceof JCFieldAccess javacFieldAccess && javacFieldAccess.sym instanceof VarSymbol varSymbol) {
@@ -349,7 +379,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IVariableBinding resolveField(SuperFieldAccess fieldAccess) {
+	public IVariableBinding resolveField(SuperFieldAccess fieldAccess) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(fieldAccess);
 		if (javacElement instanceof JCFieldAccess javacFieldAccess && javacFieldAccess.sym instanceof VarSymbol varSymbol) {
@@ -359,7 +389,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveMethod(MethodInvocation method) {
+	public IMethodBinding resolveMethod(MethodInvocation method) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(method);
 		if (javacElement instanceof JCMethodInvocation javacMethodInvocation) {
@@ -376,7 +406,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveMethod(MethodDeclaration method) {
+	public IMethodBinding resolveMethod(MethodDeclaration method) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(method);
 		if (javacElement instanceof JCMethodDecl methodDecl) {
@@ -386,7 +416,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveMethod(LambdaExpression lambda) {
+	public IMethodBinding resolveMethod(LambdaExpression lambda) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(lambda);
 		if (javacElement instanceof JCLambda jcLambda) {
@@ -399,7 +429,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveMethod(MethodReference methodReference) {
+	public IMethodBinding resolveMethod(MethodReference methodReference) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(methodReference);
 		if (javacElement instanceof JCMemberReference memberRef && memberRef.sym instanceof MethodSymbol methodSymbol) {
@@ -409,7 +439,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveMember(AnnotationTypeMemberDeclaration member) {
+	public IMethodBinding resolveMember(AnnotationTypeMemberDeclaration member) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(member);
 		if (javacElement instanceof JCMethodDecl methodDecl) {
@@ -419,7 +449,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveConstructor(EnumConstantDeclaration enumConstantDeclaration) {
+	public IMethodBinding resolveConstructor(EnumConstantDeclaration enumConstantDeclaration) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(enumConstantDeclaration);
 		if( javacElement instanceof JCVariableDecl jcvd ) {
@@ -432,7 +462,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveConstructor(SuperConstructorInvocation expression) {
+	public IMethodBinding resolveConstructor(SuperConstructorInvocation expression) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(expression);
 		if (javacElement instanceof JCMethodInvocation javacMethodInvocation) {
@@ -448,7 +478,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IBinding resolveName(Name name) {
+	public IBinding resolveName(Name name) {
 		resolve();
 		JCTree tree = this.converter.domToJavac.get(name);
 		if( tree != null ) {
@@ -495,7 +525,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
+	public IVariableBinding resolveVariable(EnumConstantDeclaration enumConstant) {
 		resolve();
 		if (this.converter.domToJavac.get(enumConstant) instanceof JCVariableDecl decl) {
 			// the decl.type can be null when there are syntax errors
@@ -507,7 +537,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IVariableBinding resolveVariable(VariableDeclaration variable) {
+	public IVariableBinding resolveVariable(VariableDeclaration variable) {
 		resolve();
 		if (this.converter.domToJavac.get(variable) instanceof JCVariableDecl decl) {
 			// the decl.type can be null when there are syntax errors
@@ -569,7 +599,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveConstructor(ClassInstanceCreation expression) {
+	public IMethodBinding resolveConstructor(ClassInstanceCreation expression) {
 		resolve();
 		return this.converter.domToJavac.get(expression) instanceof JCNewClass jcExpr
 				&& !jcExpr.constructor.type.isErroneous()?
@@ -578,7 +608,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IMethodBinding resolveConstructor(ConstructorInvocation invocation) {
+	public IMethodBinding resolveConstructor(ConstructorInvocation invocation) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(invocation);
 		if (javacElement instanceof JCMethodInvocation javacMethodInvocation) {
@@ -657,8 +687,7 @@ public class JavacBindingResolver extends BindingResolver {
 			}) //
 			.collect(Collectors.toList());
 	}
-
-	IModuleBinding resolveModule(ModuleDeclaration module) {
+	public IModuleBinding resolveModule(ModuleDeclaration module) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(module);
 		if( javacElement instanceof JCModuleDecl jcmd) {
@@ -706,7 +735,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IBinding resolveImport(ImportDeclaration importDeclaration) {
+	public IBinding resolveImport(ImportDeclaration importDeclaration) {
 		var javac = this.converter.domToJavac.get(importDeclaration.getName());
 		if (javac instanceof JCFieldAccess fieldAccess) {
 			if (fieldAccess.sym != null) {
@@ -726,7 +755,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	ITypeBinding resolveWellKnownType(String typeName) {
+	public ITypeBinding resolveWellKnownType(String typeName) {
 		com.sun.tools.javac.code.Symtab symtab = com.sun.tools.javac.code.Symtab.instance(this.context);
 		com.sun.tools.javac.code.Type type = switch (typeName) {
 		case "byte", "java.lang.Byte" -> symtab.byteType;
@@ -757,7 +786,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	@Override
-	IAnnotationBinding resolveAnnotation(Annotation annotation) {
+	public IAnnotationBinding resolveAnnotation(Annotation annotation) {
 		resolve();
 		var javac = this.converter.domToJavac.get(annotation);
 		if (javac instanceof JCAnnotation jcAnnotation) {

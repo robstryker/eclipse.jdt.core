@@ -17,7 +17,6 @@ import org.eclipse.jdt.core.dom.IAnnotationBinding;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMemberValuePairBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
 
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;

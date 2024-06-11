@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.core.dom;
+package org.eclipse.jdt.internal.javac.dom;
 
 import java.lang.reflect.Field;
 import java.util.HashSet;
@@ -18,13 +18,28 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.IDocElement;
+import org.eclipse.jdt.core.dom.JavaDocTextElement;
+import org.eclipse.jdt.core.dom.Javadoc;
+import org.eclipse.jdt.core.dom.MemberRef;
+import org.eclipse.jdt.core.dom.MethodRef;
+import org.eclipse.jdt.core.dom.MethodRefParameter;
+import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.JavacEnhancementPackagePrivateUtility;
+import org.eclipse.jdt.core.dom.QualifiedName;
+import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.TagElement;
+import org.eclipse.jdt.core.dom.TextElement;
 
 import com.sun.tools.javac.parser.UnicodeReader;
 import com.sun.tools.javac.tree.DCTree;
 import com.sun.tools.javac.tree.DCTree.DCAuthor;
 import com.sun.tools.javac.tree.DCTree.DCBlockTag;
-import com.sun.tools.javac.tree.DCTree.DCDeprecated;
 import com.sun.tools.javac.tree.DCTree.DCComment;
+import com.sun.tools.javac.tree.DCTree.DCDeprecated;
 import com.sun.tools.javac.tree.DCTree.DCDocComment;
 import com.sun.tools.javac.tree.DCTree.DCEndElement;
 import com.sun.tools.javac.tree.DCTree.DCEntity;
@@ -50,7 +65,7 @@ import com.sun.tools.javac.tree.DCTree.DCVersion;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.JCDiagnostic;
 
-class JavadocConverter {
+public class JavadocConverter {
 
 	private final AST ast;
 	private final JavacConverter javacConverter;
@@ -71,7 +86,7 @@ class JavadocConverter {
 		}
 	}
 
-	JavadocConverter(JavacConverter javacConverter, DCDocComment docComment) {
+	public JavadocConverter(JavacConverter javacConverter, DCDocComment docComment) {
 		this.javacConverter = javacConverter;
 		this.ast = javacConverter.ast;
 		this.docComment = docComment;
@@ -103,10 +118,10 @@ class JavadocConverter {
 		//this.domToJavac.put(res, javac);
 	}
 
-	Javadoc convertJavadoc() {
+	public Javadoc convertJavadoc() {
 		Javadoc res = this.ast.newJavadoc();
 		res.setSourceRange(this.initialOffset, this.endOffset - this.initialOffset);
-		if( this.javacConverter.ast.apiLevel == AST.JLS2_INTERNAL) {
+		if( JavacEnhancementPackagePrivateUtility.getApiLevel(this.javacConverter.ast) == AST.JLS2) {
 			String rawContent = this.javacConverter.rawText.substring(this.initialOffset, this.endOffset);
 			res.setComment(rawContent);
 		}
@@ -139,8 +154,7 @@ class JavadocConverter {
 		}
 		return res;
 	}
-
-	Set<JCDiagnostic> getDiagnostics() {
+	public Set<JCDiagnostic> getDiagnostics() {
         return diagnostics;
     }
 
@@ -163,37 +177,37 @@ class JavadocConverter {
 		commonSettings(res, javac);
 		if (javac instanceof DCAuthor author) {
 			res.setTagName(TagElement.TAG_AUTHOR);
-			author.name.stream().map(this::convertElement).forEach(res.fragments::add);
+			author.name.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCSince since) {
 			res.setTagName(TagElement.TAG_SINCE);
-			since.body.stream().map(this::convertElement).forEach(res.fragments::add);
+			since.body.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCVersion version) {
 		    res.setTagName(TagElement.TAG_VERSION);
-		    version.body.stream().map(this::convertElement).forEach(res.fragments::add);
+		    version.body.stream().map(this::convertElement).forEach(res.fragments()::add);
 		}  else if (javac instanceof DCSee see) {
 			res.setTagName(TagElement.TAG_SEE);
-			see.reference.stream().map(this::convertElement).forEach(res.fragments::add);
+			see.reference.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCDeprecated deprecated) {
 			res.setTagName(TagElement.TAG_DEPRECATED);
-			deprecated.body.stream().map(this::convertElement).forEach(res.fragments::add);
+			deprecated.body.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCParam param) {
 			res.setTagName(TagElement.TAG_PARAM);
 			res.fragments().add(convertElement(param.name));
-			param.description.stream().map(this::convertElement).forEach(res.fragments::add);
+			param.description.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCReturn ret) {
 			res.setTagName(TagElement.TAG_RETURN);
-			ret.description.stream().map(this::convertElement).forEach(res.fragments::add);
+			ret.description.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCThrows thrown) {
 			res.setTagName(TagElement.TAG_THROWS);
 			res.fragments().add(convertElement(thrown.name));
-			thrown.description.stream().map(this::convertElement).forEach(res.fragments::add);
+			thrown.description.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCUses uses) {
 			res.setTagName(TagElement.TAG_USES);
 			res.fragments().add(convertElement(uses.serviceType));
-			uses.description.stream().map(this::convertElement).forEach(res.fragments::add);
+			uses.description.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else if (javac instanceof DCUnknownBlockTag unknown) {
 			res.setTagName(unknown.getTagName());
-			unknown.content.stream().map(this::convertElement).forEach(res.fragments::add);
+			unknown.content.stream().map(this::convertElement).forEach(res.fragments()::add);
 		} else {
 			return Optional.empty();
 		}
@@ -321,13 +335,13 @@ class JavadocConverter {
 		} else if (javac instanceof DCErroneous erroneous) {
 		    JavaDocTextElement res = this.ast.newJavaDocTextElement();
 	        commonSettings(res, erroneous);
-	        res.setText(res.text);
+	        res.setText(res.getText());
 	        diagnostics.add(erroneous.diag);
 	        return res;
 		} else if (javac instanceof DCComment comment) {
             TextElement res = this.ast.newTextElement();
             commonSettings(res, comment);
-            res.setText(res.text);
+            res.setText(res.getText());
             return res;
 		} else {
 			Optional<TagElement> inlineTag = convertInlineTag(javac);

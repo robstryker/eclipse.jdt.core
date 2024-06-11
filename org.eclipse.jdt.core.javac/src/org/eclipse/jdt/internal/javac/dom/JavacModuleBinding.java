@@ -21,7 +21,6 @@ import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IModuleBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
 
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Directive.ExportsDirective;

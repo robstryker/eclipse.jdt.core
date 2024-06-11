@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.core.dom;
+package org.eclipse.jdt.internal.javac.dom;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +42,30 @@ import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.compiler.InvalidInputException;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTRequestor;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
+import org.eclipse.jdt.core.dom.Comment;
+import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
+import org.eclipse.jdt.core.dom.FileASTRequestor;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.ICompilationUnitResolver;
+import org.eclipse.jdt.core.dom.IModuleBinding;
+import org.eclipse.jdt.core.dom.IPackageBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.JavacEnhancementPackagePrivateUtility;
+import org.eclipse.jdt.core.dom.JavacEnhancementPackagePrivateUtility.InternalNameEnvironmentWithProgress;
+import org.eclipse.jdt.core.dom.Javadoc;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.NodeSearcher;
+import org.eclipse.jdt.core.dom.RecordDeclaration;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.internal.compiler.batch.FileSystem.Classpath;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.AccessRestriction;
@@ -74,7 +98,11 @@ import com.sun.tools.javac.util.DiagnosticSource;
  * Allows to create and resolve DOM ASTs using Javac
  * @implNote Cannot move to another package because parent class is package visible only
  */
-class JavacCompilationUnitResolver implements ICompilationUnitResolver {
+public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
+	public JavacCompilationUnitResolver() {
+		// 0-arg constructor
+	}
+	
 	private interface GenericRequestor {
 		public void acceptBinding(String bindingKey, IBinding binding);
 	}
@@ -84,12 +112,12 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		List<org.eclipse.jdt.internal.compiler.env.ICompilationUnit> sourceUnitList = new ArrayList<>(length);
 		for (int i = 0; i < length; i++) {
 			org.eclipse.jdt.internal.compiler.env.ICompilationUnit obj = createSourceUnit(sourceFilePaths[i], encodings[i]);
-			if( obj != null )
+			if( obj != null ) 
 				sourceUnitList.add(obj);
 		}
 		return sourceUnitList;
 	}
-
+	
 	private org.eclipse.jdt.internal.compiler.env.ICompilationUnit createSourceUnit(String sourceFilePath, String encoding) {
 		char[] contents = null;
 		try {
@@ -103,7 +131,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		return new org.eclipse.jdt.internal.compiler.batch.CompilationUnit(contents, sourceFilePath, encoding);
 	}
 
-
+	
 	@Override
 	public void resolve(String[] sourceFilePaths, String[] encodings, String[] bindingKeys, FileASTRequestor requestor,
 			int apiLevel, Map<String, String> compilerOptions, List<Classpath> classpaths, int flags,
@@ -112,18 +140,18 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		JavacBindingResolver bindingResolver = null;
 
 		// parse source units
-		Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> res =
+		Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> res = 
 				parse(sourceUnitList.toArray(org.eclipse.jdt.internal.compiler.env.ICompilationUnit[]::new), apiLevel, compilerOptions, flags, (IJavaProject)null, monitor);
 
 		for (var entry : res.entrySet()) {
 			CompilationUnit cu = entry.getValue();
 			requestor.acceptAST(new String(entry.getKey().getFileName()), cu);
-			if (bindingResolver == null && (JavacBindingResolver)cu.ast.getBindingResolver() != null) {
-				bindingResolver = (JavacBindingResolver)cu.ast.getBindingResolver();
+			if (bindingResolver == null && JavacEnhancementPackagePrivateUtility.getBindingResolver(cu) != null) {
+				bindingResolver = (JavacBindingResolver)JavacEnhancementPackagePrivateUtility.getBindingResolver(cu);
 			}
 		}
 
-		resolveRequestedBindingKeys(bindingResolver, bindingKeys,
+		resolveRequestedBindingKeys(bindingResolver, bindingKeys, 
 				(a,b) -> requestor.acceptBinding(a,b),
 				classpaths.stream().toArray(Classpath[]::new),
 				new CompilerOptions(compilerOptions),
@@ -139,14 +167,14 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			final JavacBindingResolver[] bindingResolver = new JavacBindingResolver[1];
 			bindingResolver[0] = null;
 			units.forEach((a,b) -> {
-				if (bindingResolver[0] == null && (JavacBindingResolver)b.ast.getBindingResolver() != null) {
-					bindingResolver[0] = (JavacBindingResolver)b.ast.getBindingResolver();
+				if (bindingResolver[0] == null && JavacEnhancementPackagePrivateUtility.getBindingResolver(b) != null) {
+					bindingResolver[0] = (JavacBindingResolver)JavacEnhancementPackagePrivateUtility.getBindingResolver(b);
 				}
-				requestor.acceptAST(a,b);
+				requestor.acceptAST(a,b);	
 				resolveBindings(b, bindingKeys, requestor, apiLevel);
 			});
 
-			resolveRequestedBindingKeys(bindingResolver[0], bindingKeys,
+			resolveRequestedBindingKeys(bindingResolver[0], bindingKeys, 
 					(a,b) -> requestor.acceptBinding(a,b),
 					new Classpath[0], // TODO need some classpaths
 					new CompilerOptions(compilerOptions),
@@ -158,8 +186,8 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			}
 		}
 	}
-
-
+	
+	
 	private void resolveRequestedBindingKeys(JavacBindingResolver bindingResolver, String[] bindingKeys, GenericRequestor requestor,
 			Classpath[] cp,CompilerOptions opts,
 			Collection<CompilationUnit> units,
@@ -176,7 +204,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			cu.accept(new BindingBuilder(bindingMap));
 		}
 
-		NameEnvironmentWithProgress environment = new NameEnvironmentWithProgress(cp, null, monitor);
+		InternalNameEnvironmentWithProgress environment = new InternalNameEnvironmentWithProgress(cp, null, monitor);
 		LookupEnvironment lu = new LookupEnvironment(new ITypeRequestor() {
 
 			@Override
@@ -207,7 +235,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 				// from parsed files
 				requestor.acceptBinding(bindingKey, bindingFromMap);
 			} else {
-
+				
 				CustomBindingKeyParser bkp = new CustomBindingKeyParser(bindingKey);
 				bkp.parse(true);
 				char[][] name = bkp.compoundName;
@@ -223,7 +251,8 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 					IBinaryType binaryType = answer.getBinaryType();
 					if (binaryType != null) {
 						BinaryTypeBinding binding = lu.cacheBinaryType(binaryType, null);
-						requestor.acceptBinding(bindingKey, new TypeBinding(bindingResolver, binding));
+						requestor.acceptBinding(bindingKey,
+								JavacEnhancementPackagePrivateUtility.createTypeBinding(bindingResolver, binding));
 					}
 				}
 			}
@@ -251,7 +280,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			this.compoundName = CharOperation.splitOn('/', fullyQualifiedName);
 		}
 	}
-
+	
 	@Override
 	public void parse(ICompilationUnit[] compilationUnits, ASTRequestor requestor, int apiLevel,
 			Map<String, String> compilerOptions, int flags, IProgressMonitor monitor) {
@@ -288,10 +317,10 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 	@Override
 	public void parse(String[] sourceFilePaths, String[] encodings, FileASTRequestor requestor, int apiLevel,
 			Map<String, String> compilerOptions, int flags, IProgressMonitor monitor) {
-
+		
 		for( int i = 0; i < sourceFilePaths.length; i++ ) {
 			org.eclipse.jdt.internal.compiler.env.ICompilationUnit ast = createSourceUnit(sourceFilePaths[i], encodings[i]);
-			Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> res =
+			Map<org.eclipse.jdt.internal.compiler.env.ICompilationUnit, CompilationUnit> res = 
 					parse(new org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] {ast}, apiLevel, compilerOptions, flags, (IJavaProject)null, monitor);
 			CompilationUnit result = res.get(ast);
 			requestor.acceptAST(sourceFilePaths[i], result);
@@ -304,29 +333,29 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			String k = binding.getKey();
 			if( k != null && bindingKeys.contains(k)) {
 				requestor.acceptBinding(k, binding);
-			}
+			}		
 		}
 	}
-
+	
 	private void resolveBindings(CompilationUnit unit, int apiLevel) {
 		resolveBindings(unit, new String[0], null, apiLevel);
 	}
-
+	
 	private void resolveBindings(CompilationUnit unit, String[] bindingKeys, ASTRequestor requestor, int apiLevel) {
 		List<String> keys = Arrays.asList(bindingKeys);
-
+		
 		if (unit.getPackage() != null) {
 			IPackageBinding pb = unit.getPackage().resolveBinding();
 			respondBinding(pb, keys, requestor);
-		}
+		} 
 		if (!unit.types().isEmpty()) {
 			List types = unit.types();
 			for( int i = 0; i < types.size(); i++ ) {
 				ITypeBinding tb = ((AbstractTypeDeclaration) types.get(i)).resolveBinding();
 				respondBinding(tb, keys, requestor);
 			}
-		}
-		if( apiLevel >= AST.JLS9_INTERNAL) {
+		} 
+		if( apiLevel >= AST.JLS9) {
 			if (unit.getModule() != null) {
 				IModuleBinding mb = unit.getModule().resolveBinding();
 				respondBinding(mb, keys, requestor);
@@ -343,7 +372,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		CompilationUnit res = parse(new org.eclipse.jdt.internal.compiler.env.ICompilationUnit[] { sourceUnit},
 				apiLevel, compilerOptions, flags, project, monitor).get(sourceUnit);
 		if (initialNeedsToResolveBinding) {
-			((JavacBindingResolver)res.ast.getBindingResolver()).isRecoveringBindings = (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
+			((JavacBindingResolver)JavacEnhancementPackagePrivateUtility.getBindingResolver(res)).isRecoveringBindings = (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
 			resolveBindings(res, apiLevel);
 		}
 		// For comparison
@@ -376,7 +405,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 					IProblem[] previous = dom.getProblems();
 					IProblem[] newProblems = Arrays.copyOf(previous, previous.length + 1);
 					newProblems[newProblems.length - 1] = newProblem;
-					dom.setProblems(newProblems);
+					JavacEnhancementPackagePrivateUtility.setCompilationUnitProblems(dom, newProblems);
 				}
 			});
 		};
@@ -416,73 +445,59 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		try {
 			var elements = task.parse().iterator();
 
-			Throwable cachedThrown = null;
-
 			for (int i = 0 ; i < sourceUnits.length; i++) {
 				if (elements.hasNext() && elements.next() instanceof JCCompilationUnit u) {
 					javacCompilationUnit = u;
 				} else {
 					return Map.of();
 				}
+				String rawText = null;
 				try {
-					String rawText = null;
-					try {
-						rawText = fileObjects.get(i).getCharContent(true).toString();
-					} catch( IOException ioe) {
-						// ignore
-					}
-					CompilationUnit res = result.get(sourceUnits[i]);
-					AST ast = res.ast;
-					int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
-					ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
-					JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context, rawText);
-					converter.populateCompilationUnit(res, javacCompilationUnit);
-					// javadoc problems explicitly set as they're not sent to DiagnosticListener (maybe find a flag to do it?)
-					var javadocProblems = converter.javadocDiagnostics.stream()
-							.map(problemConverter::createJavacProblem)
-							.filter(Objects::nonNull)
-							.toArray(IProblem[]::new);
-					if (javadocProblems.length > 0) {
-						int initialSize = res.getProblems().length;
-						var newProblems = Arrays.copyOf(res.getProblems(), initialSize + javadocProblems.length);
-						System.arraycopy(javadocProblems, 0, newProblems, initialSize, javadocProblems.length);
-						res.setProblems(newProblems);
-					}
-					List<org.eclipse.jdt.core.dom.Comment> javadocComments = new ArrayList<>();
-					res.accept(new ASTVisitor(true) {
-						@Override
-						public void postVisit(ASTNode node) { // fix some positions
-							if( node.getParent() != null ) {
-								if( node.getStartPosition() < node.getParent().getStartPosition()) {
-									int parentEnd = node.getParent().getStartPosition() + node.getParent().getLength();
-									if( node.getStartPosition() >= 0 ) {
-										node.getParent().setSourceRange(node.getStartPosition(), parentEnd - node.getStartPosition());
-									}
+					rawText = fileObjects.get(i).getCharContent(true).toString();
+				} catch( IOException ioe) {
+					// ignore
+				}
+				CompilationUnit res = result.get(sourceUnits[i]);
+				AST ast = res.getAST();
+				int savedDefaultNodeFlag = JavacEnhancementPackagePrivateUtility.getDefaultNodeFlag(ast);
+				JavacEnhancementPackagePrivateUtility.setDefaultNodeFlag(ast, ASTNode.ORIGINAL);
+				JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context, rawText);
+				converter.populateCompilationUnit(res, javacCompilationUnit);
+				// javadoc problems explicitly set as they're not sent to DiagnosticListener (maybe find a flag to do it?)
+				var javadocProblems = converter.javadocDiagnostics.stream()
+						.map(problemConverter::createJavacProblem)
+						.filter(Objects::nonNull)
+						.toArray(IProblem[]::new);
+				if (javadocProblems.length > 0) {
+					int initialSize = res.getProblems().length;
+					var newProblems = Arrays.copyOf(res.getProblems(), initialSize + javadocProblems.length);
+					System.arraycopy(javadocProblems, 0, newProblems, initialSize, javadocProblems.length);
+					JavacEnhancementPackagePrivateUtility.setCompilationUnitProblems(res, newProblems);
+			    }
+				List<org.eclipse.jdt.core.dom.Comment> javadocComments = new ArrayList<>();
+				res.accept(new ASTVisitor(true) {
+					@Override
+					public void postVisit(ASTNode node) { // fix some positions
+						if( node.getParent() != null ) {
+							if( node.getStartPosition() < node.getParent().getStartPosition()) {
+								int parentEnd = node.getParent().getStartPosition() + node.getParent().getLength();
+								if( node.getStartPosition() >= 0 ) {
+									node.getParent().setSourceRange(node.getStartPosition(), parentEnd - node.getStartPosition());
 								}
 							}
 						}
-						@Override
-						public boolean visit(Javadoc javadoc) {
-							javadocComments.add(javadoc);
-							return true;
-						}
-					});
-					addCommentsToUnit(javadocComments, res);
-					attachNonDocComments(res, context, rawText, converter, compilerOptions);
-					ast.setBindingResolver(new JavacBindingResolver(javaProject, task, context, converter));
-					//
-					ast.setOriginalModificationCount(ast.modificationCount()); // "un-dirty" AST so Rewrite can process it
-					ast.setDefaultNodeFlag(savedDefaultNodeFlag);
-				} catch (Throwable thrown) {
-					if (cachedThrown == null) {
-						cachedThrown = thrown;
 					}
-					ILog.get().error("Internal failure while parsing or converting AST for unit " + new String(sourceUnits[i].getFileName()));
-					ILog.get().error(thrown.getMessage(), thrown);
-				}
-			}
-			if (cachedThrown != null) {
-				throw new RuntimeException(cachedThrown);
+					@Override
+					public boolean visit(Javadoc javadoc) {
+						javadocComments.add(javadoc);
+						return true;
+					}
+				});
+				addCommentsToUnit(javadocComments, res);
+				attachNonDocComments(res, context, rawText, converter, compilerOptions);
+				JavacEnhancementPackagePrivateUtility.setBindingResolver(ast, new JavacBindingResolver(javaProject, task, context, converter));
+				JavacEnhancementPackagePrivateUtility.setOriginalModificationCount(ast, ast.modificationCount());
+				JavacEnhancementPackagePrivateUtility.setDefaultNodeFlag(ast, savedDefaultNodeFlag);
 			}
 		} catch (IOException ex) {
 			ILog.get().error(ex.getMessage(), ex);
@@ -509,22 +524,23 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 
 	private AST createAST(Map<String, String> options, int level, Context context, int flags) {
 		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
-		ast.setFlag(flags);
+		JavacEnhancementPackagePrivateUtility.setAstFlag(ast, flags);
 		String sourceModeSetting = options.get(JavaCore.COMPILER_SOURCE);
 		long sourceLevel = CompilerOptions.versionToJdkLevel(sourceModeSetting);
 		if (sourceLevel == 0) {
 			// unknown sourceModeSetting
 			sourceLevel = ClassFileConstants.getLatestJDKLevel();
 		}
-		ast.scanner.sourceLevel = sourceLevel;
+		org.eclipse.jdt.internal.compiler.parser.Scanner scanner = JavacEnhancementPackagePrivateUtility.getAstScanner(ast);
+		scanner.sourceLevel = sourceLevel;
 		String compliance = options.get(JavaCore.COMPILER_COMPLIANCE);
 		long complianceLevel = CompilerOptions.versionToJdkLevel(compliance);
 		if (complianceLevel == 0) {
 			// unknown sourceModeSetting
 			complianceLevel = sourceLevel;
 		}
-		ast.scanner.complianceLevel = complianceLevel;
-		ast.scanner.previewEnabled = JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES));
+		scanner.complianceLevel = complianceLevel;
+		scanner.previewEnabled = JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES));
 		return ast;
 	}
 
@@ -568,7 +584,7 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		do { // consume all tokens to populate comments
 			javacScanner.nextToken();
 		} while (javacScanner.token() != null && javacScanner.token().kind != TokenKind.EOF);
-		org.eclipse.jdt.internal.compiler.parser.Scanner ecjScanner = new ASTConverter(compilerOptions, false, null).scanner;
+		org.eclipse.jdt.internal.compiler.parser.Scanner ecjScanner = JavacEnhancementPackagePrivateUtility.getScannerForNewASTConverter(compilerOptions, false, null);
 		ecjScanner.recordLineSeparator = true;
 		ecjScanner.skipComments = false;
 		try {
@@ -583,14 +599,14 @@ class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 		// need to scan with ecjScanner first to populate some line indexes used by the CommentMapper
 		// on longer-term, implementing an alternative comment mapper based on javac scanner might be best
 		addCommentsToUnit(nonJavadocComments, unit);
-		unit.initCommentMapper(ecjScanner);
+		JavacEnhancementPackagePrivateUtility.initCommentMapper(unit, ecjScanner);
 	}
 
 	private static void addCommentsToUnit(Collection<Comment> comments, CompilationUnit res) {
 		List<Comment> before = res.getCommentList() == null ? new ArrayList<>() : new ArrayList<>(res.getCommentList());
 		before.addAll(comments);
 		before.sort(Comparator.comparingInt(Comment::getStartPosition));
-		res.setCommentTable(before.toArray(Comment[]::new));
+		JavacEnhancementPackagePrivateUtility.setCompilationUnitCommentTable(res, before.toArray(Comment[]::new));
 	}
 
 	private static class BindingBuilder extends ASTVisitor {
