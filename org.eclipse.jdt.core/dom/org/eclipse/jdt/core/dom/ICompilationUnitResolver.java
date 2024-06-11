@@ -13,15 +13,16 @@ package org.eclipse.jdt.core.dom;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.internal.compiler.batch.FileSystem.Classpath;
 
-interface ICompilationUnitResolver {
-
+/**
+ * @since 3.38
+ */
+public interface ICompilationUnitResolver {
 	void resolve(String[] sourceFilePaths, String[] encodings, String[] bindingKeys, FileASTRequestor requestor,
 			int apiLevel, Map<String, String> compilerOptions, List<Classpath> list, int flags,
 			IProgressMonitor monitor);
@@ -36,21 +37,21 @@ interface ICompilationUnitResolver {
 			Map<String, String> compilerOptions, IJavaProject project, WorkingCopyOwner workingCopyOwner, int flags,
 			IProgressMonitor monitor);
 
-	CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit, final boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths, NodeSearcher nodeSearcher,
+	/**
+	 *
+	 * @param sourceUnit
+	 * @param initialNeedsToResolveBinding
+	 * @param project
+	 * @param classpaths
+	 * @param focalPosition a position to focus on, or -1 if N/A
+	 * @param apiLevel
+	 * @param compilerOptions
+	 * @param parsedUnitWorkingCopyOwner
+	 * @param typeRootWorkingCopyOwner
+	 * @param flags
+	 * @param monitor
+	 * @return
+	 */
+	CompilationUnit toCompilationUnit(org.eclipse.jdt.internal.compiler.env.ICompilationUnit sourceUnit, final boolean initialNeedsToResolveBinding, IJavaProject project, List<Classpath> classpaths, int focalPosition,
 			int apiLevel, Map<String, String> compilerOptions, WorkingCopyOwner parsedUnitWorkingCopyOwner, WorkingCopyOwner typeRootWorkingCopyOwner, int flags, IProgressMonitor monitor);
-
-	@SuppressWarnings("unchecked")
-	static ICompilationUnitResolver getInstance() {
-		String compilationUnitResolverClass = System.getProperty(ICompilationUnitResolver.class.getSimpleName());
-		if (compilationUnitResolverClass != null) {
-			try {
-				Class<? extends ICompilationUnitResolver> clazz = (Class<? extends ICompilationUnitResolver>) Class.forName(compilationUnitResolverClass);
-				return clazz.getDeclaredConstructor().newInstance();
-			} catch (Exception e) {
-				ILog.get().error("Could not instantiate ICompilationUnitResolver: " + compilationUnitResolverClass, e); //$NON-NLS-1$
-			}
-		}
-		return CompilationUnitResolver.FACADE;
-	}
-
 }
