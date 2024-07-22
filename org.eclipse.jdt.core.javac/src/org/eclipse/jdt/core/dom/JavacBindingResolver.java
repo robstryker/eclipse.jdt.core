@@ -131,6 +131,13 @@ public class JavacBindingResolver extends BindingResolver {
 			moduleBindings.putIfAbsent(newInstance.getKey(), newInstance);
 			return moduleBindings.get(newInstance.getKey());
 		}
+		public JavacModuleBinding getModuleBinding(JCModuleDecl moduleDecl) {
+			JavacModuleBinding newInstance = new JavacModuleBinding(moduleDecl, JavacBindingResolver.this) { };
+			// Overwrite existing
+			moduleBindings.put(newInstance.getKey(), newInstance);
+			return moduleBindings.get(newInstance.getKey());
+		}
+
 		//
 		private Map<String, JavacPackageBinding> packageBindings = new HashMap<>();
 		public JavacPackageBinding getPackageBinding(PackageSymbol packageSymbol) {
@@ -233,6 +240,7 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 	public final Bindings bindings = new Bindings();
 	private WorkingCopyOwner owner;
+	private HashMap<ASTNode, IBinding> resolvedBindingsCache = new HashMap<>();
 
 	public JavacBindingResolver(IJavaProject javaProject, JavacTask javacTask, Context context, JavacConverter converter, WorkingCopyOwner owner) {
 		this.javac = javacTask;
@@ -266,7 +274,9 @@ public class JavacBindingResolver extends BindingResolver {
 			this.symbolToDeclaration.keySet().forEach(sym -> this.bindings.getBinding(sym, null));
 		}
 	}
-
+	private interface CachedValueLambda {
+	    public IBinding run(ASTNode a);
+	}
 	@Override
 	public ASTNode findDeclaringNode(IBinding binding) {
 		return findNode(getJavacSymbol(binding));
@@ -587,8 +597,20 @@ public class JavacBindingResolver extends BindingResolver {
 		return null;
 	}
 
+	IBinding resolveCached(ASTNode node, CachedValueLambda l) {
+		IBinding ret = resolvedBindingsCache.get(node);
+		if( ret == null ) {
+			ret = l.run(node);
+			if( ret != null )
+				resolvedBindingsCache.put(node, ret);
+		}
+		return ret;
+	}
 	@Override
 	IBinding resolveName(Name name) {
+		return resolveCached(name, (n) -> resolveNameImpl((Name)n));
+	}
+	private IBinding resolveNameImpl(Name name) {
 		resolve();
 		JCTree tree = this.converter.domToJavac.get(name);
 		if( tree != null ) {
@@ -660,6 +682,9 @@ public class JavacBindingResolver extends BindingResolver {
 		}
 		if (tree instanceof JCTypeParameter variableDecl && variableDecl.type != null && variableDecl.type.tsym != null) {
 			return this.bindings.getBinding(variableDecl.type.tsym, variableDecl.type);
+		}
+		if (tree instanceof JCModuleDecl variableDecl && variableDecl.sym != null && variableDecl.sym.type instanceof ModuleType mtt) {
+			return this.bindings.getModuleBinding(variableDecl);
 		}
 		return null;
 	}
@@ -771,6 +796,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IMethodBinding resolveConstructor(ClassInstanceCreation expression) {
+		return (IMethodBinding)resolveCached(expression, (n) -> resolveConstructorImpl((ClassInstanceCreation)n));
+	}
+	
+	private IMethodBinding resolveConstructorImpl(ClassInstanceCreation expression) {
 		resolve();
 		return this.converter.domToJavac.get(expression) instanceof JCNewClass jcExpr
 				&& jcExpr.constructor != null
@@ -781,6 +810,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IMethodBinding resolveConstructor(ConstructorInvocation invocation) {
+		return (IMethodBinding)resolveCached(invocation, (n) -> resolveConstructorImpl((ConstructorInvocation)n));
+	}
+	
+	private IMethodBinding resolveConstructorImpl(ConstructorInvocation invocation) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(invocation);
 		if (javacElement instanceof JCMethodInvocation javacMethodInvocation) {
@@ -861,6 +894,10 @@ public class JavacBindingResolver extends BindingResolver {
 	}
 
 	IModuleBinding resolveModule(ModuleDeclaration module) {
+		return (IModuleBinding)resolveCached(module, (n) -> resolveModuleImpl((ModuleDeclaration)n));
+	}
+	
+	private IBinding resolveModuleImpl(ModuleDeclaration module) {
 		resolve();
 		JCTree javacElement = this.converter.domToJavac.get(module);
 		if( javacElement instanceof JCModuleDecl jcmd) {
@@ -909,6 +946,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IBinding resolveImport(ImportDeclaration importDeclaration) {
+		return resolveCached(importDeclaration, (n) -> resolveImportImpl((ImportDeclaration)n));
+	}
+	
+	private IBinding resolveImportImpl(ImportDeclaration importDeclaration) {
 		var javac = this.converter.domToJavac.get(importDeclaration.getName());
 		if (javac instanceof JCFieldAccess fieldAccess) {
 			if (fieldAccess.sym != null) {
@@ -966,6 +1007,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IAnnotationBinding resolveAnnotation(Annotation annotation) {
+		return (IAnnotationBinding)resolveCached(annotation, (n) -> resolveAnnotationImpl((Annotation)n));
+	}
+	
+	IAnnotationBinding resolveAnnotationImpl(Annotation annotation) {
 		resolve();
 		IBinding recipient = null;
 		if (annotation.getParent() instanceof AnnotatableType annotatable) {
@@ -982,6 +1027,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IBinding resolveReference(MethodRef ref) {
+		return resolveCached(ref, (n) -> resolveReferenceImpl((MethodRef)n));
+	}
+	
+	private IBinding resolveReferenceImpl(MethodRef ref) {
 		resolve();
 		DocTreePath path = this.converter.findDocTreePath(ref);
 		if (path != null && JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
@@ -992,6 +1041,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	IBinding resolveReference(MemberRef ref) {
+		return resolveCached(ref, (n) -> resolveReferenceImpl((MemberRef)n));
+	}
+	
+	private IBinding resolveReferenceImpl(MemberRef ref) {
 		resolve();
 		DocTreePath path = this.converter.findDocTreePath(ref);
 		if (path != null && JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
