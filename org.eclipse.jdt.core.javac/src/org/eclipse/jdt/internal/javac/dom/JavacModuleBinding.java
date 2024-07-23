@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.ModuleElement.DirectiveKind;
 
@@ -37,10 +38,10 @@ import com.sun.tools.javac.code.Symbol.ModuleSymbol;
 import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.ModuleType;
 import com.sun.tools.javac.tree.JCTree.JCDirective;
-import com.sun.tools.javac.tree.JCTree.JCModuleDecl;
-import com.sun.tools.javac.tree.JCTree.JCRequires;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
+import com.sun.tools.javac.tree.JCTree.JCModuleDecl;
+import com.sun.tools.javac.tree.JCTree.JCRequires;
 public abstract class JavacModuleBinding implements IModuleBinding {
 
 	private static final ITypeBinding[] NO_TYPE_ARGUMENTS = new ITypeBinding[0];
@@ -126,11 +127,10 @@ public abstract class JavacModuleBinding implements IModuleBinding {
 	@Override
 	public IModuleBinding[] getRequiredModules() {
 		ArrayList<ModuleSymbol> mods = new ArrayList<>();
-		ModuleSymbol[] arr = this.moduleSymbol.getDirectives().stream() //
-				.filter(x -> x.getKind() == DirectiveKind.REQUIRES) //
-				.map(x -> ((RequiresDirective)x).module) //
-				.toArray(ModuleSymbol[]::new);
-		mods.addAll(Arrays.asList(arr));
+		this.moduleSymbol.getDirectives().stream() 
+				.filter(x -> x.getKind() == DirectiveKind.REQUIRES) 
+				.map(x -> ((RequiresDirective)x).module) 
+				.forEachOrdered(mods::add);
 		if( this.moduleDecl != null ) {
 			List<JCDirective> directives = this.moduleDecl.getDirectives();
 			for( JCDirective jcd : directives ) {

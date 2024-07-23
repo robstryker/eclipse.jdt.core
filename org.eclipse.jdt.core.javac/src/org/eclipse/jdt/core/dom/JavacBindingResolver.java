@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -274,9 +275,7 @@ public class JavacBindingResolver extends BindingResolver {
 			this.symbolToDeclaration.keySet().forEach(sym -> this.bindings.getBinding(sym, null));
 		}
 	}
-	private interface CachedValueLambda {
-	    public IBinding run(ASTNode a);
-	}
+
 	@Override
 	public ASTNode findDeclaringNode(IBinding binding) {
 		return findNode(getJavacSymbol(binding));
@@ -597,10 +596,10 @@ public class JavacBindingResolver extends BindingResolver {
 		return null;
 	}
 
-	IBinding resolveCached(ASTNode node, CachedValueLambda l) {
+	IBinding resolveCached(ASTNode node, Function<ASTNode, IBinding> l) {
 		IBinding ret = resolvedBindingsCache.get(node);
 		if( ret == null ) {
-			ret = l.run(node);
+			ret = l.apply(node);
 			if( ret != null )
 				resolvedBindingsCache.put(node, ret);
 		}
