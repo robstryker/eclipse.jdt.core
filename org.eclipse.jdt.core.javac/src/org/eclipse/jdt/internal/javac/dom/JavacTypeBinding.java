@@ -26,14 +26,16 @@ import javax.tools.JavaFileObject;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.WorkingCopyOwner;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.dom.IAnnotationBinding;
@@ -173,15 +175,23 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			JavaFileObject jfo = classSymbol.sourcefile;
-			ICompilationUnit tmp = getCompilationUnit(jfo.getName().toCharArray(), this.resolver.getWorkingCopyOwner());
-			String[] cleaned = cleanedUpName(classSymbol).split("\\$");
-			IType ret = null;
-			for( int i = 0; i < cleaned.length; i++ ) {
-				ret = (ret == null ? tmp.getType(cleaned[i]) : ret.getType(cleaned[i]));
-				if( ret == null )
-					return null;
+			ICompilationUnit tmp = jfo == null ? null : getCompilationUnit(jfo.getName().toCharArray(), this.resolver.getWorkingCopyOwner());
+			if( tmp == null ) {
+				try {
+					return this.resolver.javaProject.findType(cleanedUpName(classSymbol), this.resolver.getWorkingCopyOwner(), new NullProgressMonitor());
+				} catch (JavaModelException ex) {
+					ILog.get().error(ex.getMessage(), ex);
+				}
+			} else {
+				String[] cleaned = cleanedUpName(classSymbol).split("\\$");
+				IType ret = null;
+				for( int i = 0; i < cleaned.length; i++ ) {
+					ret = (ret == null ? tmp.getType(cleaned[i]) : ret.getType(cleaned[i]));
+					if( ret == null )
+						return null;
+				}
+				return ret;
 			}
-			return ret;
 		}
 		return null;
 	}
