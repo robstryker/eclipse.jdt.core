@@ -194,7 +194,6 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		IPackageFragment pkg = Util.getPackageFragment(slashSeparatedFileName, pkgEnd, -1/*no jar separator for .java files*/);
 		if (pkg != null) {
 			int start;
-			System.out.println(pkg.getResource().getLocation());
 			ICompilationUnit cu = pkg.getCompilationUnit(new String(slashSeparatedFileName, start =  pkgEnd+1, slashSeparatedFileName.length - start));
 			if (workingCopyOwner != null) {
 				ICompilationUnit workingCopy = cu.findWorkingCopy(workingCopyOwner);
