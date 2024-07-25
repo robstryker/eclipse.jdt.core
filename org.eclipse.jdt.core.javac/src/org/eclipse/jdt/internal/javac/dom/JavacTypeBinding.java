@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -174,23 +176,25 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 					return type.getType("", 1);
 				}
 			}
-			JavaFileObject jfo = classSymbol.sourcefile;
+			
+			JavaFileObject jfo = classSymbol == null ? null : classSymbol.sourcefile;
 			ICompilationUnit tmp = jfo == null ? null : getCompilationUnit(jfo.getName().toCharArray(), this.resolver.getWorkingCopyOwner());
-			if( tmp == null ) {
-				try {
-					return this.resolver.javaProject.findType(cleanedUpName(classSymbol), this.resolver.getWorkingCopyOwner(), new NullProgressMonitor());
-				} catch (JavaModelException ex) {
-					ILog.get().error(ex.getMessage(), ex);
-				}
-			} else {
+			if( tmp != null ) {
 				String[] cleaned = cleanedUpName(classSymbol).split("\\$");
 				IType ret = null;
-				for( int i = 0; i < cleaned.length; i++ ) {
+				boolean done = false;
+				for( int i = 0; i < cleaned.length && !done; i++ ) {
 					ret = (ret == null ? tmp.getType(cleaned[i]) : ret.getType(cleaned[i]));
 					if( ret == null )
-						return null;
+						done = true;
 				}
-				return ret;
+				if( ret != null ) 
+					return ret;
+			} 
+			try {
+				return this.resolver.javaProject.findType(cleanedUpName(classSymbol), this.resolver.getWorkingCopyOwner(), new NullProgressMonitor());
+			} catch (JavaModelException ex) {
+				ILog.get().error(ex.getMessage(), ex);
 			}
 		}
 		return null;
@@ -338,7 +342,25 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public String getBinaryName() {
-		return this.typeSymbol.flatName().toString();
+		String r = this.typeSymbol.flatName().toString();
+		if( r.contains("$")) {
+			String[] split = r.split("\\$");
+			int integerOnlyIndex = -1;
+			Pattern p = Pattern.compile("^[0-9]*$");
+			for( int i = 0; i < split.length && integerOnlyIndex == -1; i++ ) {
+				if( p.matcher(split[i]).matches()) {
+					integerOnlyIndex = i;
+				}
+			}
+			if( integerOnlyIndex != -1 ) {
+				String ret = split[0] + "$" + split[integerOnlyIndex];
+				for( int i = integerOnlyIndex+1; i < split.length; i++ ) {
+					ret += "$" + split[i];
+				}
+				return ret;
+			}
+		}
+		return r;
 	}
 
 	@Override
@@ -579,6 +601,9 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			return "null";
 		}
 		if (this.type instanceof ArrayType at) {
+			if( this.type.tsym.isAnonymous()) {
+				return "";
+			}
 			return this.resolver.bindings.getTypeBinding(at.getComponentType()).getQualifiedName() + "[]";
 		}
 		if (this.type instanceof WildcardType wt) {
@@ -595,6 +620,9 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			return builder.toString();
 		}
 
+		if( this.isAnonymous()) {
+			return "";
+		}
 		StringBuilder res = new StringBuilder();
 		res.append(this.typeSymbol.toString());
 		ITypeBinding[] typeArguments = this.getTypeArguments();
@@ -623,6 +651,9 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	public ITypeBinding getSuperclass() {
 		Type superType = this.types.supertype(this.type);
 		if (superType != null && !(superType instanceof JCNoType)) {
+			if( this.isInterface() && superType.toString().equals("java.lang.Object")) {
+				return null;
+			}
 			return this.resolver.bindings.getTypeBinding(superType);
 		}
 		String jlObject = this.typeSymbol.getQualifiedName().toString();
