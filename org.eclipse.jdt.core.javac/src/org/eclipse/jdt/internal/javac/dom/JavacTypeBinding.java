@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -289,7 +290,25 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public String getBinaryName() {
-		return this.typeSymbol.flatName().toString();
+		String r = this.typeSymbol.flatName().toString();
+		if( r.contains("$")) {
+			String[] split = r.split("\\$");
+			int integerOnlyIndex = -1;
+			Pattern p = Pattern.compile("^[0-9]*$");
+			for( int i = 0; i < split.length && integerOnlyIndex == -1; i++ ) {
+				if( p.matcher(split[i]).matches()) {
+					integerOnlyIndex = i;
+				}
+			}
+			if( integerOnlyIndex != -1 ) {
+				String ret = split[0] + "$" + split[integerOnlyIndex];
+				for( int i = integerOnlyIndex+1; i < split.length; i++ ) {
+					ret += "$" + split[i];
+				}
+				return ret;
+			}
+		}
+		return r;
 	}
 
 	@Override
