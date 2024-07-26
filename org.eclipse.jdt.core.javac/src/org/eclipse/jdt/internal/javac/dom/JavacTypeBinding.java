@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.javac.dom;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,14 +21,23 @@ import java.util.stream.StreamSupport;
 
 import javax.lang.model.type.NullType;
 import javax.lang.model.type.TypeKind;
+import javax.tools.JavaFileObject;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.dom.IAnnotationBinding;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -40,6 +50,7 @@ import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.codegen.ConstantPool;
 import org.eclipse.jdt.internal.core.SourceType;
+import org.eclipse.jdt.internal.core.util.Util;
 
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Kinds;
@@ -163,11 +174,51 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 					return type.getType("", 1);
 				}
 			}
+			
+			JavaFileObject jfo = classSymbol == null ? null : classSymbol.sourcefile;
+			ICompilationUnit tmp = jfo == null ? null : getCompilationUnit(jfo.getName().toCharArray(), this.resolver.getWorkingCopyOwner());
+			if( tmp != null ) {
+				String[] cleaned = cleanedUpName(classSymbol).split("\\$");
+				IType ret = null;
+				boolean done = false;
+				for( int i = 0; i < cleaned.length && !done; i++ ) {
+					ret = (ret == null ? tmp.getType(cleaned[i]) : ret.getType(cleaned[i]));
+					if( ret == null )
+						done = true;
+				}
+				if( ret != null ) 
+					return ret;
+			} 
 			try {
 				return this.resolver.javaProject.findType(cleanedUpName(classSymbol), this.resolver.getWorkingCopyOwner(), new NullProgressMonitor());
 			} catch (JavaModelException ex) {
 				ILog.get().error(ex.getMessage(), ex);
 			}
+		}
+		return null;
+	}
+
+	private static ICompilationUnit getCompilationUnit(char[] fileName, WorkingCopyOwner workingCopyOwner) {
+		char[] slashSeparatedFileName = CharOperation.replaceOnCopy(fileName, File.separatorChar, '/');
+		int pkgEnd = CharOperation.lastIndexOf('/', slashSeparatedFileName); // pkgEnd is exclusive
+		if (pkgEnd == -1)
+			return null;
+		IPackageFragment pkg = Util.getPackageFragment(slashSeparatedFileName, pkgEnd, -1/*no jar separator for .java files*/);
+		if (pkg != null) {
+			int start;
+			ICompilationUnit cu = pkg.getCompilationUnit(new String(slashSeparatedFileName, start =  pkgEnd+1, slashSeparatedFileName.length - start));
+			if (workingCopyOwner != null) {
+				ICompilationUnit workingCopy = cu.findWorkingCopy(workingCopyOwner);
+				if (workingCopy != null)
+					return workingCopy;
+			}
+			return cu;
+		}
+		IWorkspaceRoot wsRoot = ResourcesPlugin.getWorkspace().getRoot();
+		IFile file = wsRoot.getFile(new Path(String.valueOf(fileName)));
+		if (file.exists()) {
+			// this approach works if file exists but is not on the project's build path:
+			return JavaCore.createCompilationUnitFrom(file);
 		}
 		return null;
 	}
