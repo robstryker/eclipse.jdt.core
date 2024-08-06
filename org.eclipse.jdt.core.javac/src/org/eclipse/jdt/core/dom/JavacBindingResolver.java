@@ -152,7 +152,13 @@ public class JavacBindingResolver extends BindingResolver {
 		}
 		//
 		private Map<String, JavacTypeBinding> typeBinding = new HashMap<>();
+		public JavacTypeBinding getTypeBinding(JCTree tree, com.sun.tools.javac.code.Type type) {
+			return getTypeBinding(type, tree instanceof JCClassDecl);
+		}
 		public JavacTypeBinding getTypeBinding(com.sun.tools.javac.code.Type type) {
+			return getTypeBinding(type, false);
+		}
+		public JavacTypeBinding getTypeBinding(com.sun.tools.javac.code.Type type, boolean isDeclaration) {
 			if (type instanceof com.sun.tools.javac.code.Type.TypeVar typeVar) {
 				return getTypeVariableBinding(typeVar);
 			}
@@ -164,15 +170,16 @@ public class JavacBindingResolver extends BindingResolver {
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.MethodType)
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.ForAll)
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.ErrorType)) {
-				JavacTypeBinding newInstance = new JavacTypeBinding(errorType.getOriginalType(), type.tsym, JavacBindingResolver.this) { };
+				JavacTypeBinding newInstance = new JavacTypeBinding(errorType.getOriginalType(), type.tsym, isDeclaration, JavacBindingResolver.this) { };
 				typeBinding.putIfAbsent(newInstance.getKey(), newInstance);
 				JavacTypeBinding jcb = typeBinding.get(newInstance.getKey());
 				jcb.setRecovered(true);
 				return jcb;
 			}
-			JavacTypeBinding newInstance = new JavacTypeBinding(type, type.tsym, JavacBindingResolver.this) { };
-			typeBinding.putIfAbsent(newInstance.getKey(), newInstance);
-			return typeBinding.get(newInstance.getKey());
+			JavacTypeBinding newInstance = new JavacTypeBinding(type, type.tsym, isDeclaration, JavacBindingResolver.this) { };
+			String k = newInstance.getKey();
+			typeBinding.putIfAbsent(k, newInstance);
+			return typeBinding.get(k);
 		}
 		//
 		private Map<String, JavacTypeVariableBinding> typeVariableBindings = new HashMap<>();
@@ -445,7 +452,7 @@ public class JavacBindingResolver extends BindingResolver {
 		resolve();
 		JCTree javacNode = this.converter.domToJavac.get(type);
 		if (javacNode instanceof JCClassDecl jcClassDecl && jcClassDecl.type != null) {
-			return this.bindings.getTypeBinding(jcClassDecl.type);
+			return this.bindings.getTypeBinding(jcClassDecl.type, true);
 		}
 		return null;
 	}

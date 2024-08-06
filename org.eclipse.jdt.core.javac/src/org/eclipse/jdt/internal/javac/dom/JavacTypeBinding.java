@@ -88,13 +88,15 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	public final TypeSymbol typeSymbol;
 	private final Types types;
 	private final Type type;
+	private boolean isDeclaration;
 	private boolean recovered = false;
 
-	public JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, JavacBindingResolver resolver) {
+	public JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, boolean isDeclaration, JavacBindingResolver resolver) {
 		if (type instanceof PackageType) {
 			throw new IllegalArgumentException("Use JavacPackageBinding");
 		}
 		this.type = type;
+		this.isDeclaration = isDeclaration;
 		this.resolver = resolver;
 		this.types = Types.instance(this.resolver.context);
 		// TODO: consider getting rid of typeSymbol in constructor and always derive it from type
@@ -251,15 +253,19 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	}
 	public String getKey(Type t, Name n) {
 		StringBuilder builder = new StringBuilder();
-		getKey(builder, t, n, false);
+		getKey(builder, t, n, false, this.isDeclaration);
 		return builder.toString();
 	}
 
 	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
-		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf);
+		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, false);
+	}
+	
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean isDeclaration) {
+		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, isDeclaration);
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf) {
+	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean isDeclaration) {
 		if (typeToBuild instanceof Type.JCNoType) {
 			return;
 		}
@@ -269,7 +275,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		}
 		if (typeToBuild instanceof ArrayType arrayType) {
 			builder.append('[');
-			getKey(builder, arrayType.elemtype, isLeaf);
+			getKey(builder, arrayType.elemtype, isLeaf, isDeclaration);
 			return;
 		}
 		if (typeToBuild instanceof Type.WildcardType wildcardType) {
@@ -277,10 +283,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				builder.append('*');
 			} else if (wildcardType.isExtendsBound()) {
 				builder.append('+');
-				getKey(builder, wildcardType.getExtendsBound(), isLeaf);
+				getKey(builder, wildcardType.getExtendsBound(), isLeaf, isDeclaration);
 			} else if (wildcardType.isSuperBound()) {
 				builder.append('-');
-				getKey(builder, wildcardType.getSuperBound(), isLeaf);
+				getKey(builder, wildcardType.getSuperBound(), isLeaf, isDeclaration);
 			}
 			return;
 		}
@@ -293,10 +299,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			builder.append(n.toString().replace('.', '/'));
-			if (typeToBuild.isParameterized()) {
+			if (typeToBuild.isParameterized() && !isDeclaration) {
 				builder.append('<');
 				for (var typeArgument : typeToBuild.getTypeArguments()) {
-					getKey(builder, typeArgument, false);
+					getKey(builder, typeArgument, false, isDeclaration);
 				}
 				builder.append('>');
 			}
@@ -588,9 +594,9 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public String getQualifiedName() {
-		return getQualifiedNameImpl(this.type, this.typeSymbol, this.typeSymbol.owner);
+		return getQualifiedNameImpl(this.type, this.typeSymbol, this.typeSymbol.owner, !this.isDeclaration);
 	}
-	private String getQualifiedNameImpl(Type type, TypeSymbol typeSymbol, Symbol owner) {
+	private String getQualifiedNameImpl(Type type, TypeSymbol typeSymbol, Symbol owner, boolean includeParameters) {
 		if (owner instanceof MethodSymbol) {
 			return "";
 		}
@@ -629,7 +635,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			return type == null || type.tsym == null || type.tsym.name == null ? "" : type.tsym.name.toString();
 		} else if( owner instanceof TypeSymbol tss) {
 			Type parentType = (type instanceof ClassType ct && ct.getEnclosingType() != Type.noType ? ct.getEnclosingType() : tss.type);
-			String parentName = getQualifiedNameImpl(parentType, tss, tss.owner);
+			String parentName = getQualifiedNameImpl(parentType, tss, tss.owner, includeParameters);
 			res.append(parentName);
 			if( !"".equals(parentName)) {
 				res.append(".");
@@ -638,18 +644,22 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		} else {
 			res.append(typeSymbol.toString());
 		}
-		ITypeBinding[] typeArguments = getUncheckedTypeArguments(type, typeSymbol);
-		boolean isTypeDeclaration = typeSymbol != null && typeSymbol.type == type;
-		if (!isTypeDeclaration && typeArguments.length > 0) {
-			res.append("<");
-			int i;
-			for (i = 0; i < typeArguments.length - 1; i++) {
+
+		if( includeParameters ) {
+			ITypeBinding[] typeArguments = getUncheckedTypeArguments(type, typeSymbol);
+			boolean isTypeDeclaration = typeSymbol != null && typeSymbol.type == type;
+			if (!isTypeDeclaration && typeArguments.length > 0) {
+				res.append("<");
+				int i;
+				for (i = 0; i < typeArguments.length - 1; i++) {
+					res.append(typeArguments[i].getQualifiedName());
+					res.append(",");
+				}
 				res.append(typeArguments[i].getQualifiedName());
-				res.append(",");
+				res.append(">");
 			}
-			res.append(typeArguments[i].getQualifiedName());
-			res.append(">");
 		}
+		
 		// remove annotations here
 		int annotationIndex = -1;
 		while ((annotationIndex = res.lastIndexOf("@")) >= 0) {

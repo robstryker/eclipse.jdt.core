@@ -28,7 +28,7 @@ public abstract class JavacTypeVariableBinding extends JavacTypeBinding {
 	private final JavacBindingResolver bindingResolver;
 
 	public JavacTypeVariableBinding(TypeVar type, TypeVariableSymbol sym, JavacBindingResolver bindingResolver) {
-		super(type, sym, bindingResolver);
+		super(type, sym, false, bindingResolver);
 		this.sym = sym;
 		this.bindingResolver = bindingResolver;
 	}
