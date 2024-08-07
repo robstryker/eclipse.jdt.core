@@ -253,7 +253,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	}
 	public String getKey(Type t, Name n) {
 		StringBuilder builder = new StringBuilder();
-		getKey(builder, t, n, false, this.isDeclaration);
+		getKey(builder, t, n, false, true);
 		return builder.toString();
 	}
 
@@ -261,11 +261,11 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, false);
 	}
 	
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean isDeclaration) {
-		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, isDeclaration);
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean includeParameters) {
+		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, includeParameters);
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean isDeclaration) {
+	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean includeParameters) {
 		if (typeToBuild instanceof Type.JCNoType) {
 			return;
 		}
@@ -275,7 +275,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		}
 		if (typeToBuild instanceof ArrayType arrayType) {
 			builder.append('[');
-			getKey(builder, arrayType.elemtype, isLeaf, isDeclaration);
+			getKey(builder, arrayType.elemtype, isLeaf, includeParameters);
 			return;
 		}
 		if (typeToBuild instanceof Type.WildcardType wildcardType) {
@@ -283,10 +283,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				builder.append('*');
 			} else if (wildcardType.isExtendsBound()) {
 				builder.append('+');
-				getKey(builder, wildcardType.getExtendsBound(), isLeaf, isDeclaration);
+				getKey(builder, wildcardType.getExtendsBound(), isLeaf, includeParameters);
 			} else if (wildcardType.isSuperBound()) {
 				builder.append('-');
-				getKey(builder, wildcardType.getSuperBound(), isLeaf, isDeclaration);
+				getKey(builder, wildcardType.getSuperBound(), isLeaf, includeParameters);
 			}
 			return;
 		}
@@ -299,10 +299,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			builder.append(n.toString().replace('.', '/'));
-			if (typeToBuild.isParameterized() && !isDeclaration) {
+			if (typeToBuild.isParameterized() && includeParameters) {
 				builder.append('<');
 				for (var typeArgument : typeToBuild.getTypeArguments()) {
-					getKey(builder, typeArgument, false, isDeclaration);
+					getKey(builder, typeArgument, false, includeParameters);
 				}
 				builder.append('>');
 			}
