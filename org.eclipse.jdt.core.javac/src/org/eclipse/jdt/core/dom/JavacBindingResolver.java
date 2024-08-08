@@ -42,7 +42,6 @@ import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Attribute.Compound;
 import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.ModuleSymbol;
 import com.sun.tools.javac.code.Symbol.PackageSymbol;
@@ -98,57 +97,99 @@ public class JavacBindingResolver extends BindingResolver {
 	private JavacConverter converter;
 	boolean isRecoveringBindings = false;
 
+	public static class BindingKeyException extends Exception {
+		private static final long serialVersionUID = -4468681148041117634L;
+		public BindingKeyException(Throwable t) {
+			super(t);
+		}
+	    public BindingKeyException(String message, Throwable cause) {
+	    	super(message, cause);
+	    }
+	}
+	
 	public class Bindings {
 		private Map<String, JavacAnnotationBinding> annotationBindings = new HashMap<>();
 		public JavacAnnotationBinding getAnnotationBinding(Compound ann, IBinding recipient) {
 			JavacAnnotationBinding newInstance = new JavacAnnotationBinding(ann, JavacBindingResolver.this, recipient) { };
-			annotationBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return annotationBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				annotationBindings.putIfAbsent(k, newInstance);
+				return annotationBindings.get(k);
+			} 
+			return null;
 		}
 		//
 		private Map<String, JavacMemberValuePairBinding> memberValuePairBindings = new HashMap<>();
 		public JavacMemberValuePairBinding getMemberValuePairBinding(MethodSymbol key, Attribute value) {
 			JavacMemberValuePairBinding newInstance = new JavacMemberValuePairBinding(key, value, JavacBindingResolver.this) { };
-			memberValuePairBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return memberValuePairBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				memberValuePairBindings.putIfAbsent(k, newInstance);
+				return memberValuePairBindings.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacMethodBinding> methodBindings = new HashMap<>();
 		public JavacMethodBinding getMethodBinding(MethodType methodType, MethodSymbol methodSymbol) {
 			JavacMethodBinding newInstance = new JavacMethodBinding(methodType, methodSymbol, JavacBindingResolver.this) { };
-			methodBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return methodBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				methodBindings.putIfAbsent(k, newInstance);
+				return methodBindings.get(k);
+			}
+			return null;
 		}
 		public JavacMethodBinding getErrorMethodBinding(MethodType methodType, Symbol originatingSymbol) {
 			JavacMethodBinding newInstance = new JavacErrorMethodBinding(originatingSymbol, methodType, JavacBindingResolver.this) { };
-			methodBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return methodBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				methodBindings.putIfAbsent(k, newInstance);
+				return methodBindings.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacModuleBinding> moduleBindings = new HashMap<>();
 		public JavacModuleBinding getModuleBinding(ModuleType moduleType) {
 			JavacModuleBinding newInstance = new JavacModuleBinding(moduleType, JavacBindingResolver.this) { };
-			moduleBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return moduleBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				moduleBindings.putIfAbsent(k, newInstance);
+				return moduleBindings.get(k);
+			}
+			return null;
 		}
 		public JavacModuleBinding getModuleBinding(ModuleSymbol moduleSymbol) {
 			JavacModuleBinding newInstance = new JavacModuleBinding(moduleSymbol, JavacBindingResolver.this) { };
-			moduleBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return moduleBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				moduleBindings.putIfAbsent(k, newInstance);
+				return moduleBindings.get(k);
+			}
+			return null;
 		}
 		public JavacModuleBinding getModuleBinding(JCModuleDecl moduleDecl) {
 			JavacModuleBinding newInstance = new JavacModuleBinding(moduleDecl, JavacBindingResolver.this) { };
 			// Overwrite existing
-			moduleBindings.put(newInstance.getKey(), newInstance);
-			return moduleBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				moduleBindings.put(k, newInstance);
+				return moduleBindings.get(k);
+			}
+			return null;
 		}
 
 		//
 		private Map<String, JavacPackageBinding> packageBindings = new HashMap<>();
 		public JavacPackageBinding getPackageBinding(PackageSymbol packageSymbol) {
 			JavacPackageBinding newInstance = new JavacPackageBinding(packageSymbol, JavacBindingResolver.this) { };
-			packageBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return packageBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				packageBindings.putIfAbsent(k, newInstance);
+				return packageBindings.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacTypeBinding> typeBinding = new HashMap<>();
@@ -178,29 +219,44 @@ public class JavacBindingResolver extends BindingResolver {
 			}
 			JavacTypeBinding newInstance = new JavacTypeBinding(type, type.tsym, isDeclaration, JavacBindingResolver.this) { };
 			String k = newInstance.getKey();
-			typeBinding.putIfAbsent(k, newInstance);
-			return typeBinding.get(k);
+			if( k != null ) {
+				typeBinding.putIfAbsent(k, newInstance);
+				return typeBinding.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacTypeVariableBinding> typeVariableBindings = new HashMap<>();
 		public JavacTypeVariableBinding getTypeVariableBinding(TypeVar typeVar) {
 			JavacTypeVariableBinding newInstance = new JavacTypeVariableBinding(typeVar, (TypeVariableSymbol)typeVar.tsym, JavacBindingResolver.this) { };
-			typeVariableBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return typeVariableBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				typeVariableBindings.putIfAbsent(k, newInstance);
+				return typeVariableBindings.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacVariableBinding> variableBindings = new HashMap<>();
 		public JavacVariableBinding getVariableBinding(VarSymbol varSymbol) {
 			JavacVariableBinding newInstance = new JavacVariableBinding(varSymbol, JavacBindingResolver.this) { };
-			variableBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return variableBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				variableBindings.putIfAbsent(k, newInstance);
+				return variableBindings.get(k);
+			}
+			return null;
 		}
 		//
 		private Map<String, JavacLambdaBinding> lambdaBindings = new HashMap<>();
 		public JavacLambdaBinding getLambdaBinding(JavacMethodBinding javacMethodBinding) {
 			JavacLambdaBinding newInstance = new JavacLambdaBinding(javacMethodBinding);
-			lambdaBindings.putIfAbsent(newInstance.getKey(), newInstance);
-			return lambdaBindings.get(newInstance.getKey());
+			String k = newInstance.getKey();
+			if( k != null ) {
+				lambdaBindings.putIfAbsent(k, newInstance);
+				return lambdaBindings.get(k);
+			}
+			return null;
 		}
 
 		public IBinding getBinding(final Symbol owner, final com.sun.tools.javac.code.Type type) {

@@ -46,6 +46,7 @@ import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.JavacBindingResolver;
+import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
 import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.codegen.ConstantPool;
@@ -58,6 +59,7 @@ import com.sun.tools.javac.code.Kinds.Kind;
 import com.sun.tools.javac.code.Kinds.KindSelector;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
+import com.sun.tools.javac.code.Symbol.CompletionFailure;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.PackageSymbol;
 import com.sun.tools.javac.code.Symbol.RootPackageSymbol;
@@ -252,20 +254,24 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		return getKey(t, this.typeSymbol.flatName());
 	}
 	public String getKey(Type t, Name n) {
-		StringBuilder builder = new StringBuilder();
-		getKey(builder, t, n, false, true);
-		return builder.toString();
+		try {
+			StringBuilder builder = new StringBuilder();
+			getKey(builder, t, n, false, true);
+			return builder.toString();
+		} catch(BindingKeyException bke) {
+			return null;
+		}
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) {
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf) throws BindingKeyException {
 		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, false);
 	}
 	
-	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean includeParameters) {
+	static void getKey(StringBuilder builder, Type typeToBuild, boolean isLeaf, boolean includeParameters) throws BindingKeyException {
 		getKey(builder, typeToBuild, typeToBuild.asElement().flatName(), isLeaf, includeParameters);
 	}
 
-	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean includeParameters) {
+	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean includeParameters) throws BindingKeyException {
 		if (typeToBuild instanceof Type.JCNoType) {
 			return;
 		}
@@ -299,7 +305,14 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				}
 			}
 			builder.append(n.toString().replace('.', '/'));
-			if (typeToBuild.isParameterized() && includeParameters) {
+			boolean b1 = typeToBuild.isParameterized();
+			boolean b2 = false;
+			try {
+				b2 = typeToBuild.tsym != null && typeToBuild.tsym.type != null && typeToBuild.tsym.type.isParameterized();
+			} catch( CompletionFailure cf1) {
+				throw new BindingKeyException(cf1);
+			}
+			if ((b1 || b2) && includeParameters) {
 				builder.append('<');
 				for (var typeArgument : typeToBuild.getTypeArguments()) {
 					getKey(builder, typeArgument, false, includeParameters);
@@ -435,6 +448,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 				Type.MethodType methodType = this.types.memberType(this.type, sym).asMethodType();
 				return this.resolver.bindings.getMethodBinding(methodType, sym);
 			})
+			.filter(Objects::nonNull)
 			.toArray(IMethodBinding[]::new);
 	}
 
@@ -572,9 +586,11 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			return builder.toString();
 		}
 		StringBuilder builder = new StringBuilder(this.typeSymbol.getSimpleName().toString());
-		if (this.getTypeArguments().length > 0) {
+		ITypeBinding[] types = this.getUncheckedTypeArguments(this.type, this.typeSymbol);
+		
+		if (types != null && types.length > 0) {
 			builder.append("<");
-			for (var typeArgument : this.getTypeArguments()) {
+			for (var typeArgument : types) {
 				builder.append(typeArgument.getName());
 			}
 			builder.append(">");
@@ -725,7 +741,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	}
 	
 	private ITypeBinding[] getTypeArguments(Type t, TypeSymbol ts) {
-		if (t.getTypeArguments().isEmpty() || t == ts.type || isTargettingPreGenerics()) {
+		if (t == ts.type || t.getTypeArguments().isEmpty() || isTargettingPreGenerics()) {
 			return NO_TYPE_ARGUMENTS;
 		}
 		return getUncheckedTypeArguments(t, ts);
@@ -791,11 +807,12 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public ITypeBinding[] getTypeParameters() {
-		return !isRawType() && this.type instanceof ClassType classType
-			? classType.getTypeArguments()
+		if( isRawType() || getTypeArguments() == NO_TYPE_ARGUMENTS || !(this.type instanceof ClassType)) {
+			return new ITypeBinding[0];
+		}
+		return ((ClassType)this.type).getTypeArguments()
 				.map(this.resolver.bindings::getTypeBinding)
-				.toArray(ITypeBinding[]::new)
-			: new ITypeBinding[0];
+				.toArray(ITypeBinding[]::new);
 	}
 
 	@Override
@@ -869,7 +886,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public boolean isGenericType() {
-		return this.type.isParameterized() && this.type.getTypeArguments().stream().anyMatch(TypeVar.class::isInstance);
+		return this.type.isParameterized() && getTypeArguments() != NO_TYPE_ARGUMENTS && this.type.getTypeArguments().stream().anyMatch(TypeVar.class::isInstance);
 	}
 
 	@Override
