@@ -168,7 +168,7 @@ public abstract class JavacModuleBinding implements IModuleBinding {
 	public String[] getExportedTo(IPackageBinding packageBinding) {
 		ExportsDirective[] arr = this.moduleSymbol.getDirectives().stream().filter((x) -> x.getKind() == DirectiveKind.EXPORTS).map((x) -> (ExportsDirective)x).toArray(ExportsDirective[]::new);
 		for( int i = 0; i < arr.length; i++ ) {
-			JavacPackageBinding tmp = this.resolver.bindings.getPackageBinding(arr[i].packge);
+			IPackageBinding tmp = this.resolver.bindings.getPackageBinding(arr[i].packge);
 			if( tmp.isUnnamed() == packageBinding.isUnnamed() && 
 					tmp.getName().equals(packageBinding.getName())) {
 				return arr[i].getTargetModules().stream().map(ModuleSymbol::toString).toArray(String[]::new);
@@ -191,7 +191,7 @@ public abstract class JavacModuleBinding implements IModuleBinding {
 	public String[] getOpenedTo(IPackageBinding packageBinding) {
 		OpensDirective[] arr = this.moduleSymbol.getDirectives().stream().filter((x) -> x.getKind() == DirectiveKind.OPENS).map((x) -> (OpensDirective)x).toArray(OpensDirective[]::new);
 		for( int i = 0; i < arr.length; i++ ) {
-			JavacPackageBinding tmp = this.resolver.bindings.getPackageBinding(arr[i].packge);
+			IPackageBinding tmp = this.resolver.bindings.getPackageBinding(arr[i].packge);
 			if( tmp.isUnnamed() == packageBinding.isUnnamed() && 
 					tmp.getName().equals(packageBinding.getName())) {
 				return arr[i].getTargetModules().stream().map((x) -> x.toString()).toArray(String[]::new);

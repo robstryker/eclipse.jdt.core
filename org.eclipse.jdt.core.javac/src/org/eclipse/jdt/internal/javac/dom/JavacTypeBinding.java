@@ -104,9 +104,18 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		this.resolver = resolver;
 		this.types = Types.instance(this.resolver.context);
 		// TODO: consider getting rid of typeSymbol in constructor and always derive it from type
-		this.typeSymbol = typeSymbol.kind == Kind.ERR ? this.type.tsym : typeSymbol;
+		//this.typeSymbol = typeSymbol.kind == Kind.ERR ? this.type.tsym : typeSymbol;
+		this.typeSymbol = typeSymbol;
 	}
 
+	/*
+	 * If this object's typeSymbol is identical to one used in a declaration,
+	 * set isDeclaration to true.
+	 */
+	public void setIsDeclaration() {
+		this.isDeclaration = true;
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
 		return obj instanceof JavacTypeBinding other
@@ -362,7 +371,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	public boolean isEqualTo(final IBinding binding) {
 		return binding instanceof final JavacTypeBinding other &&
 			Objects.equals(this.resolver, other.resolver) &&
-			Objects.equals(this.typeSymbol, other.typeSymbol);
+			Objects.equals(this.type, other.type);
 	}
 
 	@Override
@@ -682,7 +691,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 		if( includeParameters ) {
 			ITypeBinding[] typeArguments = getUncheckedTypeArguments(type, typeSymbol);
-			boolean isTypeDeclaration = typeSymbol != null && typeSymbol.type == type;
+			boolean isTypeDeclaration = this.isDeclaration; //typeSymbol != null && typeSymbol.type == type;
 			if (!isTypeDeclaration && typeArguments.length > 0) {
 				res.append("<");
 				int i;
