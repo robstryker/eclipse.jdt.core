@@ -1169,6 +1169,7 @@ class JavacConverter {
 			}
 			if (fieldAccess.getExpression() instanceof JCIdent qualifier) {
 				Name qualifierName = convertName(qualifier.getName());
+				this.domToJavac.put(qualifierName, qualifier);
 				SimpleName qualifiedName = (SimpleName)convertName(fieldAccess.getIdentifier());
 				if (qualifiedName == null) {
 					// when there are syntax errors where the statement is not completed.
