@@ -762,6 +762,10 @@ public class JavacBindingResolver extends BindingResolver {
 			}
 		}
 		
+		PackageSymbol ps = findPackageSymbol(name);
+		if( ps != null ) {
+			return this.bindings.getPackageBinding(ps);
+		}
 		if( isPackageName(name)) {
 			return this.bindings.getPackageBinding(name);
 		}
@@ -795,8 +799,9 @@ public class JavacBindingResolver extends BindingResolver {
 		boolean insideQualifier = false;
 		while( working instanceof Name ) {
 			JCTree tree = this.converter.domToJavac.get(working);
-			if( tree instanceof JCFieldAccess)
-				return false;
+			if( tree instanceof JCFieldAccess jcfa) {
+				return jcfa.sym instanceof PackageSymbol;
+			}
 			if( working instanceof QualifiedName qnn) {
 				if( qnn.getQualifier() == working) {
 					insideQualifier = true;
@@ -807,6 +812,25 @@ public class JavacBindingResolver extends BindingResolver {
 		return insideQualifier;
 	}
 	
+	private PackageSymbol findPackageSymbol(Name name) {
+		if( name instanceof SimpleName sn) {
+			ASTNode parent = sn.getParent();
+			if( parent instanceof QualifiedName qn ) {
+				JCTree tree = this.converter.domToJavac.get(parent);
+				if( tree instanceof JCFieldAccess jcfa) {
+					return jcfa.sym.owner instanceof PackageSymbol pss ? pss : null;
+				}
+			}
+		}
+		if( name instanceof QualifiedName qn ) {
+			JCTree tree = this.converter.domToJavac.get(qn);
+			if( tree instanceof JCFieldAccess jcfa) {
+				return jcfa.sym instanceof PackageSymbol pss ? pss : null;
+			}
+		}
+		return null;
+	}
+
 	private ASTNode discoverRelevantParentForName(Name name) {
 		ASTNode working = name;
 		ASTNode closestNodeWithJavac = null;
