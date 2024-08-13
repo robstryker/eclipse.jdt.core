@@ -92,15 +92,15 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	public final TypeSymbol typeSymbol;
 	private final Types types;
 	private final Type type;
-	private boolean isDeclaration;
+	private boolean specificInstance;
 	private boolean recovered = false;
 
-	public JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, boolean isDeclaration, JavacBindingResolver resolver) {
+	public JavacTypeBinding(final Type type, final TypeSymbol typeSymbol, boolean specificInstance, JavacBindingResolver resolver) {
 		if (type instanceof PackageType) {
 			throw new IllegalArgumentException("Use JavacPackageBinding");
 		}
 		this.type = type;
-		this.isDeclaration = isDeclaration;
+		this.specificInstance = specificInstance;
 		this.resolver = resolver;
 		this.types = Types.instance(this.resolver.context);
 		// TODO: consider getting rid of typeSymbol in constructor and always derive it from type
@@ -109,11 +109,13 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	}
 
 	/*
-	 * If this object's typeSymbol is identical to one used in a declaration,
-	 * set isDeclaration to true.
+	 * Some times, we can determine whether a binding is related to a specific instance
+	 * at creation time. OTher times, like when we traverse the owners of a symbol up the chain,
+	 * we cannot. In this case we default to assuming it is related to a specific instance 
+	 * until proven otherwise later on. 
 	 */
-	public void setIsDeclaration() {
-		this.isDeclaration = true;
+	public void clearSpecificInstance() {
+		this.specificInstance = false;
 	}
 	
 	@Override
@@ -426,7 +428,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		}
 		if (this.typeSymbol.type instanceof WildcardType wildcardType) {
 			// TODO: probably wrong, we might need to pass in the parent node from the AST
-			return (ITypeBinding)this.resolver.bindings.getBinding(wildcardType.type.tsym, wildcardType.type);
+			return (ITypeBinding)this.resolver.bindings.getBinding(this.resolver.symbolToDeclaration.get(this.typeSymbol), wildcardType.type.tsym, wildcardType.type);
 		}
 		throw new IllegalStateException("Binding is a wildcard, but type cast failed");
 	}
@@ -506,7 +508,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		Symbol parentSymbol = this.typeSymbol.owner;
 		do {
 			if (parentSymbol instanceof final ClassSymbol clazz) {
-				return this.resolver.bindings.getTypeBinding(clazz.type);
+				return this.resolver.bindings.getTypeBinding(clazz.type, false);
 			}
 			parentSymbol = parentSymbol.owner;
 		} while (parentSymbol != null);
@@ -537,7 +539,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		if (!this.isLocal()) {
 			return null;
 		}
-		return this.resolver.bindings.getBinding(this.typeSymbol.owner, this.typeSymbol.owner.type);
+		return this.resolver.bindings.getBinding(this.resolver.symbolToDeclaration.get(this.typeSymbol), this.typeSymbol.owner, this.typeSymbol.owner.type);
 	}
 
 	@Override
@@ -628,7 +630,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			return builder.toString();
 		}
 		StringBuilder builder = new StringBuilder(this.typeSymbol.getSimpleName().toString());
-		if( !this.isDeclaration) {
+		if( this.specificInstance) {
 			ITypeBinding[] types = this.getUncheckedTypeArguments(this.type, this.typeSymbol);
 			if (types != null && types.length > 0) {
 				builder.append("<");
@@ -653,7 +655,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public String getQualifiedName() {
-		return getQualifiedNameImpl(this.type, this.typeSymbol, this.typeSymbol.owner, !this.isDeclaration);
+		return getQualifiedNameImpl(this.type, this.typeSymbol, this.typeSymbol.owner, this.specificInstance);
 	}
 	protected String getQualifiedNameImpl(Type type, TypeSymbol typeSymbol, Symbol owner, boolean includeParameters) {
 		if (owner instanceof MethodSymbol) {
@@ -702,8 +704,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 		if( includeParameters ) {
 			ITypeBinding[] typeArguments = getUncheckedTypeArguments(type, typeSymbol);
-			boolean isTypeDeclaration = this.isDeclaration; //typeSymbol != null && typeSymbol.type == type;
-			if (!isTypeDeclaration && typeArguments.length > 0) {
+			if (this.specificInstance && typeArguments.length > 0) {
 				res.append("<");
 				int i;
 				for (i = 0; i < typeArguments.length - 1; i++) {
@@ -928,7 +929,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 
 	@Override
 	public boolean isGenericType() {
-		return this.type.isParameterized() && this.isDeclaration && this.type.getTypeArguments().stream().anyMatch(TypeVar.class::isInstance);
+		return this.type.isParameterized() && !this.specificInstance && this.type.getTypeArguments().stream().anyMatch(TypeVar.class::isInstance);
 	}
 
 	@Override

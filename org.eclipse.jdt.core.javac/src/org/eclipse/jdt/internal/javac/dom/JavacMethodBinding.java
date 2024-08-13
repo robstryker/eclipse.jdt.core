@@ -167,7 +167,7 @@ public abstract class JavacMethodBinding implements IMethodBinding {
 		// If it is true, then once we only construct correct binding that really
 		// reference the method, then we can probably get rid of a lot of complexity
 		// here or in `getDeclaringClass()`
-		if (this.resolver.bindings.getBinding(this.methodSymbol.owner, this.methodType) instanceof ITypeBinding typeBinding) {
+		if (this.resolver.bindings.getBinding(this.resolver.symbolToDeclaration.get(this.methodSymbol), this.methodSymbol.owner, this.methodType) instanceof ITypeBinding typeBinding) {
 			Queue<ITypeBinding> types = new LinkedList<>();
 			types.add(typeBinding);
 			while (!types.isEmpty()) {
@@ -320,9 +320,9 @@ public abstract class JavacMethodBinding implements IMethodBinding {
 			}
 			builder.append(')');
 			if (methodType != null && !(methodType.getReturnType() instanceof JCNoType)) {
-				JavacTypeBinding.getKey(builder, methodType.getReturnType(), false);
+				JavacTypeBinding.getKey(builder, methodType.getReturnType(), false, true);
 			} else if (!(methodSymbol.getReturnType() instanceof JCNoType)) {
-				JavacTypeBinding.getKey(builder, methodSymbol.getReturnType(), false);
+				JavacTypeBinding.getKey(builder, methodSymbol.getReturnType(), false, true);
 			}
 			if (
 					methodSymbol.getThrownTypes().stream().anyMatch(a -> !a.getParameterTypes().isEmpty())

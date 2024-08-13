@@ -12,6 +12,7 @@ package org.eclipse.jdt.core.dom;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -223,12 +224,12 @@ public class JavacBindingResolver extends BindingResolver {
 
 		private Map<String, JavacTypeBinding> typeBinding = new HashMap<>();
 		public JavacTypeBinding getTypeBinding(JCTree tree, com.sun.tools.javac.code.Type type) {
-			return getTypeBinding(type, tree instanceof JCClassDecl);
+			return getTypeBinding(type, !(tree instanceof JCClassDecl));
 		}
 		public JavacTypeBinding getTypeBinding(com.sun.tools.javac.code.Type type) {
-			return getTypeBinding(type, false);
+			return getTypeBinding(type, true);
 		}
-		public JavacTypeBinding getTypeBinding(com.sun.tools.javac.code.Type type, boolean isDeclaration) {
+		public JavacTypeBinding getTypeBinding(com.sun.tools.javac.code.Type type, boolean specificInstance) {
 			if (type instanceof com.sun.tools.javac.code.Type.TypeVar typeVar) {
 				return getTypeVariableBinding(typeVar);
 			}
@@ -240,20 +241,20 @@ public class JavacBindingResolver extends BindingResolver {
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.MethodType)
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.ForAll)
 						&& !(errorType.getOriginalType() instanceof com.sun.tools.javac.code.Type.ErrorType)) {
-				JavacTypeBinding newInstance = new JavacTypeBinding(errorType.getOriginalType(), type.tsym, isDeclaration, JavacBindingResolver.this) { };
+				JavacTypeBinding newInstance = new JavacTypeBinding(errorType.getOriginalType(), type.tsym, specificInstance, JavacBindingResolver.this) { };
 				typeBinding.putIfAbsent(newInstance.getKey(), newInstance);
 				JavacTypeBinding jcb = typeBinding.get(newInstance.getKey());
 				jcb.setRecovered(true);
 				return jcb;
 			}
-			JavacTypeBinding newInstance = new JavacTypeBinding(type, type.tsym, isDeclaration, JavacBindingResolver.this) { };
+			JavacTypeBinding newInstance = new JavacTypeBinding(type, type.tsym, specificInstance, JavacBindingResolver.this) { };
 			String k = newInstance.getKey();
 			if( k != null ) {
 				JavacTypeBinding curr = typeBinding.get(k);
 				if( curr == null ) 
 					typeBinding.putIfAbsent(k, newInstance);
-				else if(isDeclaration && curr.typeSymbol == type.tsym) {
-					curr.setIsDeclaration();
+				else if(!specificInstance && curr.typeSymbol == type.tsym) {
+					curr.clearSpecificInstance();
 				}
 				return typeBinding.get(k);
 			}
@@ -293,10 +294,10 @@ public class JavacBindingResolver extends BindingResolver {
 			return null;
 		}
 
-		public IBinding getBinding(final Symbol owner, final com.sun.tools.javac.code.Type type) {
+		public IBinding getBinding(ASTNode node, final Symbol owner, final com.sun.tools.javac.code.Type type) {
 			Symbol recoveredSymbol = getRecoveredSymbol(type);
 			if (recoveredSymbol != null) {
-				return getBinding(recoveredSymbol, recoveredSymbol.type);
+				return getBinding(node, recoveredSymbol, recoveredSymbol.type);
 			}
 			if (type instanceof ErrorType) {
 				if (type.getOriginalType() instanceof MethodType missingMethodType) {
@@ -315,6 +316,7 @@ public class JavacBindingResolver extends BindingResolver {
 				}
 				// without the type there is not much we can do; fallthrough to null
 			} else if (owner instanceof TypeSymbol typeSymbol) {
+				// TODO, check the node tree to see if this is associated with a specific instance
 				return getTypeBinding(typeSymbol.type);
 			} else if (owner instanceof final MethodSymbol other) {
 				return getMethodBinding(type instanceof com.sun.tools.javac.code.Type.MethodType methodType ? methodType : owner.type.asMethodType(), other, null);
@@ -386,7 +388,7 @@ public class JavacBindingResolver extends BindingResolver {
 				}
 			});
 			// prefill the binding so that they're already searchable by key
-			this.symbolToDeclaration.keySet().forEach(sym -> this.bindings.getBinding(sym, null));
+			this.symbolToDeclaration.keySet().forEach(sym -> this.bindings.getBinding(this.symbolToDeclaration.get(sym), sym, null));
 		}
 	}
 
@@ -456,40 +458,44 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	ITypeBinding resolveType(Type type) {
+		return resolveType(type, true);
+	}
+
+	ITypeBinding resolveType(Type type, boolean specificInstance) {
 		if (type.getParent() instanceof ParameterizedType parameterized
 			&& type.getLocationInParent() == ParameterizedType.TYPE_PROPERTY) {
 			// use parent type for this as it keeps generics info
-			return resolveType(parameterized);
+			return resolveType(parameterized, specificInstance);
 		}
 		resolve();
 		if (type.getParent() instanceof ArrayCreation arrayCreation) {
 			JCTree jcArrayCreation = this.converter.domToJavac.get(arrayCreation);
-			return this.bindings.getTypeBinding(((JCNewArray)jcArrayCreation).type);
+			return this.bindings.getTypeBinding(((JCNewArray)jcArrayCreation).type, specificInstance);
 		}
 		JCTree jcTree = this.converter.domToJavac.get(type);
 		if (jcTree instanceof JCIdent ident && ident.type != null) {
 			if (ident.type instanceof PackageType) {
 				return null;
 			}
-			return this.bindings.getTypeBinding(ident.type);
+			return this.bindings.getTypeBinding(ident.type, specificInstance);
 		}
 		if (jcTree instanceof JCFieldAccess access) {
-			return this.bindings.getTypeBinding(access.type);
+			return this.bindings.getTypeBinding(access.type, specificInstance);
 		}
 		if (jcTree instanceof JCPrimitiveTypeTree primitive && primitive.type != null) {
-			return this.bindings.getTypeBinding(primitive.type);
+			return this.bindings.getTypeBinding(primitive.type, specificInstance);
 		}
 		if (jcTree instanceof JCArrayTypeTree arrayType && arrayType.type != null) {
-			return this.bindings.getTypeBinding(arrayType.type);
+			return this.bindings.getTypeBinding(arrayType.type, specificInstance);
 		}
 		if (jcTree instanceof JCWildcard wcType && wcType.type != null) {
-			return this.bindings.getTypeBinding(wcType.type);
+			return this.bindings.getTypeBinding(wcType.type, specificInstance);
 		}
 		if (jcTree instanceof JCTypeApply jcta && jcta.type != null) {
-			return this.bindings.getTypeBinding(jcta.type);
+			return this.bindings.getTypeBinding(jcta.type, specificInstance);
 		}
 		if (jcTree instanceof JCAnnotatedType annotated && annotated.type != null) {
-			return this.bindings.getTypeBinding(annotated.type);
+			return this.bindings.getTypeBinding(annotated.type, specificInstance);
 		}
 
 //			return this.flowResult.stream().map(env -> env.enclClass)
@@ -752,7 +758,7 @@ public class JavacBindingResolver extends BindingResolver {
 		DocTreePath path = this.converter.findDocTreePath(name);
 		if (path != null) {
 			if (JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
-				return this.bindings.getBinding(symbol, null);
+				return this.bindings.getBinding(name, symbol, null);
 			}
 		}
 		
@@ -760,13 +766,13 @@ public class JavacBindingResolver extends BindingResolver {
 			return this.bindings.getPackageBinding(name);
 		}
 		
-		ASTNode properParent = name;
+		ASTNode relevantNode = name;
 		if (tree == null && (name.getFlags() & ASTNode.ORIGINAL) != 0) {
-			properParent = discoverRelevantParentForName(name);
-			tree = ASTNodeToJCTree(properParent);
+			relevantNode = discoverRelevantParentForName(name);
+			tree = ASTNodeToJCTree(relevantNode);
 		}
-		if (properParent instanceof Type type) { // case of "var"
-			return resolveType(type);
+		if (relevantNode instanceof Type type) { // case of "var"
+			return resolveType(type, discoverIsSpecificInstance(type));
 		}
 		if( tree != null ) {
 			IBinding ret = resolveNameToJavac(name, tree);
@@ -774,6 +780,14 @@ public class JavacBindingResolver extends BindingResolver {
 		}
 		
 		return null;
+	}
+
+	private boolean discoverIsSpecificInstance(Type relevantNode) {
+		// TODO no idea what to do here... just... adding specifics one at a time
+		// Until I can generalize it :|
+//		if( relevantNode.getParent() instanceof InstanceofExpression)
+//			return false;
+		return true;
 	}
 
 	private boolean isPackageName(Name name) {
@@ -805,10 +819,13 @@ public class JavacBindingResolver extends BindingResolver {
 			}
 			working = working.getParent();
 		}
-		if( working instanceof AnnotatableType st && st.getParent() instanceof ParameterizedType pt) {
-			if( st == pt.getType()) {
-				return pt;
+		if( working instanceof Type st ) {
+			if( st.getParent() instanceof ParameterizedType pt) {
+				if( st == pt.getType()) {
+					return pt;
+				}
 			}
+			return st;
 		}
 		return closestNodeWithJavac != null ? closestNodeWithJavac : name;
 	}
@@ -832,28 +849,28 @@ public class JavacBindingResolver extends BindingResolver {
 					&& errorType.getOriginalType() instanceof ErrorType) {
 				return null;
 			}
-			return this.bindings.getBinding(ident.sym, ident.type != null ? ident.type : ident.sym.type);
+			return this.bindings.getBinding(name, ident.sym, ident.type != null ? ident.type : ident.sym.type);
 		}
 		if (tree instanceof JCTypeApply variableDecl && variableDecl.type != null) {
 			return this.bindings.getTypeBinding(variableDecl.type);
 		}
 		if (tree instanceof JCFieldAccess fieldAccess && fieldAccess.sym != null) {
-			return this.bindings.getBinding(fieldAccess.sym, fieldAccess.type);
+			return this.bindings.getBinding(name, fieldAccess.sym, fieldAccess.type);
 		}
 		if (tree instanceof JCMethodInvocation methodInvocation && methodInvocation.meth.type != null) {
-			return this.bindings.getBinding(((JCFieldAccess)methodInvocation.meth).sym, methodInvocation.meth.type);
+			return this.bindings.getBinding(name, ((JCFieldAccess)methodInvocation.meth).sym, methodInvocation.meth.type);
 		}
 		if (tree instanceof JCClassDecl classDecl && classDecl.sym != null) {
-			return this.bindings.getBinding(classDecl.sym, classDecl.type);
+			return this.bindings.getBinding(name, classDecl.sym, classDecl.type);
 		}
 		if (tree instanceof JCMethodDecl methodDecl && methodDecl.sym != null) {
-			return this.bindings.getBinding(methodDecl.sym, methodDecl.type);
+			return this.bindings.getBinding(name, methodDecl.sym, methodDecl.type);
 		}
 		if (tree instanceof JCVariableDecl variableDecl && variableDecl.sym != null) {
-			return this.bindings.getBinding(variableDecl.sym, variableDecl.type);
+			return this.bindings.getBinding(name, variableDecl.sym, variableDecl.type);
 		}
 		if (tree instanceof JCTypeParameter variableDecl && variableDecl.type != null && variableDecl.type.tsym != null) {
-			return this.bindings.getBinding(variableDecl.type.tsym, variableDecl.type);
+			return this.bindings.getBinding(name, variableDecl.type.tsym, variableDecl.type);
 		}
 		if (tree instanceof JCModuleDecl variableDecl && variableDecl.sym != null && variableDecl.sym.type instanceof ModuleType mtt) {
 			return this.bindings.getModuleBinding(variableDecl);
@@ -957,7 +974,7 @@ public class JavacBindingResolver extends BindingResolver {
 			}
 			Symbol recoveredSymbol = getRecoveredSymbol(jcExpr.type);
 			if (recoveredSymbol != null) {
-				IBinding recoveredBinding = this.bindings.getBinding(recoveredSymbol, recoveredSymbol.type);
+				IBinding recoveredBinding = this.bindings.getBinding(expr, recoveredSymbol, recoveredSymbol.type);
 				switch (recoveredBinding) {
 				case IVariableBinding variableBinding: return variableBinding.getType();
 				case ITypeBinding typeBinding: return typeBinding;
@@ -1130,7 +1147,7 @@ public class JavacBindingResolver extends BindingResolver {
 		var javac = this.converter.domToJavac.get(importDeclaration.getName());
 		if (javac instanceof JCFieldAccess fieldAccess) {
 			if (fieldAccess.sym != null) {
-				return this.bindings.getBinding(fieldAccess.sym, null);
+				return this.bindings.getBinding(importDeclaration, fieldAccess.sym, null);
 			}
 			if (importDeclaration.isStatic()) {
 				com.sun.tools.javac.code.Type type = fieldAccess.getExpression().type;
@@ -1211,7 +1228,7 @@ public class JavacBindingResolver extends BindingResolver {
 		resolve();
 		DocTreePath path = this.converter.findDocTreePath(ref);
 		if (path != null && JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
-			return this.bindings.getBinding(symbol, null);
+			return this.bindings.getBinding(ref, symbol, null);
 		}
 		return null;
 	}
@@ -1225,7 +1242,7 @@ public class JavacBindingResolver extends BindingResolver {
 		resolve();
 		DocTreePath path = this.converter.findDocTreePath(ref);
 		if (path != null && JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
-			return this.bindings.getBinding(symbol, null);
+			return this.bindings.getBinding(ref, symbol, null);
 		}
 		return null;
 	}
