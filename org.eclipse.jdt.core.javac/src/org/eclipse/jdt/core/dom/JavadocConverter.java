@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import org.eclipse.core.runtime.ILog;
 
 import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.DocTree.Kind;
 import com.sun.source.util.DocTreePath;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.parser.UnicodeReader;
@@ -148,10 +149,22 @@ class JavadocConverter {
 				}
 			}
 			if (this.buildJavadoc) {
-				List<? extends IDocElement> elements = Stream.of(docComment.preamble, docComment.fullBody, docComment.postamble, docComment.tags)
-					.flatMap(List::stream)
-					.flatMap(this::convertElement)
-					.toList();
+				List<DCTree> treeElements = Stream.of(docComment.preamble, docComment.fullBody, docComment.postamble, docComment.tags)
+						.flatMap(List::stream).toList();
+				List<IDocElement> elements = new ArrayList<>();
+				List<DCTree> combinable = new ArrayList<>();
+				for( int i = 0; i < treeElements.size(); i++ ) {
+					DCTree oneTree = treeElements.get(i);
+					if( oneTree instanceof DCText || oneTree instanceof DCStartElement || oneTree instanceof DCEndElement || oneTree instanceof DCEntity) {
+						combinable.add(oneTree);
+					} else {
+						elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
+						combinable.clear();
+						elements.addAll(convertElement(oneTree).toList());
+					}
+				}
+				elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
+				
 				TagElement host = null;
 				for (IDocElement docElement : elements) {
 					if (docElement instanceof TagElement tag && !isInline(tag)) {
@@ -226,7 +239,8 @@ class JavadocConverter {
 			res.setTagName(TagElement.TAG_RETURN);
 			ret.description.stream().flatMap(this::convertElement).forEach(res.fragments::add);
 		} else if (javac instanceof DCThrows thrown) {
-			res.setTagName(TagElement.TAG_THROWS);
+			String tagName = thrown.kind == Kind.THROWS ? TagElement.TAG_THROWS : TagElement.TAG_EXCEPTION;
+			res.setTagName(tagName);
 			res.fragments().addAll(convertElement(thrown.name).toList());
 			thrown.description.stream().flatMap(this::convertElement).forEach(res.fragments::add);
 		} else if (javac instanceof DCUses uses) {
@@ -346,6 +360,27 @@ class JavadocConverter {
 			}).filter(Objects::nonNull);
 	}
 
+	private Stream<Region> splitLines(DCTree[] allPositions) {
+		if( allPositions.length > 0 ) {
+			int[] startPosition = { this.docComment.getSourcePosition(allPositions[0].getStartPosition()) };
+			int endPosition = this.docComment.getSourcePosition(allPositions[allPositions.length - 1].getEndPosition());
+			return Arrays.stream(this.javacConverter.rawText.substring(startPosition[0], endPosition).split("(\r)?\n\\s*\\*\\s")) //$NON-NLS-1$
+				.map(string -> {
+					int index = this.javacConverter.rawText.indexOf(string, startPosition[0]);
+					if (index < 0) {
+						return null;
+					}
+					startPosition[0] = index + string.length();
+					return new Region(index, string.length());
+				}).filter(Objects::nonNull);
+		}
+		return Stream.<Region>empty();
+	}
+
+	private Stream<IDocElement> convertElementGroup(DCTree[] javac) {
+		return splitLines(javac).map(this::toTextElement);
+	}
+	
 	private Stream<? extends IDocElement> convertElement(DCTree javac) {
 		if (javac instanceof DCText text) {
 			return splitLines(text).map(this::toTextElement);
@@ -526,8 +561,8 @@ class JavadocConverter {
 		return null;
 	}
 
-	private JavaDocTextElement toDefaultTextElement(DCTree javac) {
-		JavaDocTextElement res = this.ast.newJavaDocTextElement();
+	private TextElement toDefaultTextElement(DCTree javac) {
+		TextElement res = this.ast.newTextElement();
 		commonSettings(res, javac);
 		res.setText(this.docComment.comment.getText().substring(javac.getStartPosition(), javac.getEndPosition()));
 		return res;

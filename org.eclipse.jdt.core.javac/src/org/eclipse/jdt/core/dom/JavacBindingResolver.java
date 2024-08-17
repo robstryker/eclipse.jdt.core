@@ -23,6 +23,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.lang.model.element.Element;
+
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.WorkingCopyOwner;
@@ -1361,9 +1363,28 @@ public class JavacBindingResolver extends BindingResolver {
 	private IBinding resolveReferenceImpl(MethodRef ref) {
 		resolve();
 		DocTreePath path = this.converter.findDocTreePath(ref);
-		if (path != null && JavacTrees.instance(this.context).getElement(path) instanceof Symbol symbol) {
-			return this.bindings.getBinding(symbol, null);
+		if (path != null ) {
+			Element e = JavacTrees.instance(this.context).getElement(path);
+			if(e instanceof Symbol symbol) {
+				IBinding r1 = this.bindings.getBinding(symbol, null);
+				return r1;
+			}
 		}
+		if( ref.parameters() != null && ref.parameters().size() == 0) {
+			// exhaustively search for a similar method ref
+			DocTreePath[] possible = this.converter.searchRelatedDocTreePath(ref);
+			if( possible != null ) {
+				for( int i = 0; i < possible.length; i++ ) {
+					Element e = JavacTrees.instance(this.context).getElement(possible[i]);
+					if(e instanceof Symbol symbol) {
+						IBinding r1 = this.bindings.getBinding(symbol, null);
+						if( r1 != null )
+							return r1;
+					}
+				}
+			}
+		}
+		// 
 		return null;
 	}
 

@@ -3360,5 +3360,17 @@ class JavacConverter {
 			.orElse(null);
 	}
 
+	public DocTreePath[] searchRelatedDocTreePath(MethodRef ref) {
+		ArrayList<ASTNode> possibleNodes = new ArrayList<>();
+		this.javadocConverters.forEach(x -> possibleNodes.addAll(x.converted.keySet()));
+		DocTreePath[] r = possibleNodes.stream().filter(x -> x != ref && x instanceof MethodRef mr 
+				&& mr.getName().toString().equals(ref.getName().toString())
+				&& Objects.equals(mr.getQualifier() == null ? null : mr.getQualifier().toString(), 
+						ref.getQualifier() == null ? null : ref.getQualifier().toString()))
+				.map(x -> findDocTreePath(x))
+				.toArray(size -> new DocTreePath[size]);
+		return r; 
+	}
+
 
 }
