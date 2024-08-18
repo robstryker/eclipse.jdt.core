@@ -1090,7 +1090,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 					previousBinding = memberRef.resolveBinding();
 					if (previousBinding != null) {
 						SimpleName name = memberRef.getName();
-						assumeNotNull(this.prefix+""+name+" binding was not foundfound in "+fragment, name.resolveBinding());
+						assumeNotNull(this.prefix+""+name+" binding was not found in "+fragment, name.resolveBinding());
 						verifyNameBindings(memberRef.getQualifier());
 					}
 				} else if (fragment.getNodeType() == ASTNode.METHOD_REF) {

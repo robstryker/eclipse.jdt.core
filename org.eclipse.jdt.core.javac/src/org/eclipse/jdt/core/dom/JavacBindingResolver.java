@@ -909,6 +909,12 @@ public class JavacBindingResolver extends BindingResolver {
 		if (name.getParent() instanceof Name parentName) {
 			return resolveNameImpl(parentName);
 		}
+		if( name.getParent() instanceof MethodRef mref) {
+			return resolveReference(mref);
+		}
+		if( name.getParent() instanceof MemberRef mref) {
+			return resolveReference(mref);
+		}
 		return null;
 	}
 
