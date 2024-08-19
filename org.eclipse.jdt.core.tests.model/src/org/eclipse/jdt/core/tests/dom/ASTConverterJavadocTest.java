@@ -2107,7 +2107,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 				ASTNode fragment = (ASTNode) tagElement.fragments().get(0);
 				assumeEquals("Wrong fragments type for :"+tagElement, ASTNode.TEXT_ELEMENT, fragment.getNodeType());
 				TextElement textElement = (TextElement) fragment;
-				assumeEquals("Wrong text for tag!", tagTexts[i], textElement.getText());
+				assumeEquals("Wrong text for tag " + i + "!", tagTexts[i], textElement.getText());
 			}
 		}
 		this.stopOnFailure = true;
