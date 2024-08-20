@@ -151,7 +151,9 @@ class JavadocConverter {
 			if (this.buildJavadoc) {
 				List<DCTree> treeElements = Stream.of(docComment.preamble, docComment.fullBody, docComment.postamble, docComment.tags)
 						.flatMap(List::stream).toList();
-				List<IDocElement> elements = convertElementCombiningNodes(treeElements);
+				List<IDocElement> elements2 = convertElementCombiningNodes(treeElements);
+				List<IDocElement> elements = convertNestedTagElements(elements2);
+				
 				TagElement host = null;
 				for (IDocElement docElement : elements) {
 					if (docElement instanceof TagElement tag && !isInline(tag)) {
@@ -169,6 +171,7 @@ class JavadocConverter {
 						} else if (docElement instanceof ASTNode extraNode){
 							host.setSourceRange(host.getStartPosition(), extraNode.getStartPosition() + extraNode.getLength() - host.getStartPosition());
 						}
+						
 						host.fragments().add(docElement);
 					}
 				}
@@ -180,6 +183,33 @@ class JavadocConverter {
 			ILog.get().error("Failed to convert Javadoc", ex);
 		}
 		return res;
+	}
+
+	private List<IDocElement> convertNestedTagElements(List<IDocElement> elements2) {
+		return elements2.stream().map(x -> {
+			if( x instanceof TextElement te) {
+				String s = te.getText();
+				if( s != null && s.startsWith("{@") && s.trim().endsWith("}")) {
+					String txt = this.javacConverter.rawText.substring(te.getStartPosition(), te.getStartPosition() + te.getLength());
+					TextElement innerMost = this.ast.newTextElement();
+					innerMost.setSourceRange(te.getStartPosition()+2, te.getLength()-3);
+					innerMost.setText(txt.substring(2, txt.length() - 1));
+					
+					TagElement nested = this.ast.newTagElement();
+					int atLoc = txt.indexOf("@");
+					String name = atLoc == -1 ? txt : ("@" + txt.substring(atLoc + 1)).split("\\s+")[0];
+					nested.setTagName(name);
+					nested.setSourceRange(te.getStartPosition(), te.getLength());
+					nested.fragments().add(innerMost);
+					
+					TagElement wrapper = this.ast.newTagElement();
+					wrapper.setSourceRange(te.getStartPosition(), te.getLength());
+					wrapper.fragments().add(nested);
+					return wrapper;
+				}
+			}
+			return x;
+		}).toList();
 	}
 
 	Set<JCDiagnostic> getDiagnostics() {
@@ -331,8 +361,11 @@ class JavadocConverter {
 
 	private TextElement toTextElement(Region line) {
 		TextElement res = this.ast.newTextElement();
-		res.setSourceRange(line.startOffset, line.length);
-		res.setText(this.javacConverter.rawText.substring(line.startOffset, line.startOffset + line.length));
+		String suggestedText = this.javacConverter.rawText.substring(line.startOffset, line.startOffset + line.length);
+		String strippedLeading = suggestedText.stripLeading();
+		int leadingWhitespace = suggestedText.length() - strippedLeading.length();
+		res.setSourceRange(line.startOffset + leadingWhitespace, line.length - leadingWhitespace);
+		res.setText(strippedLeading);
 		return res;
 	}
 
@@ -381,9 +414,20 @@ class JavadocConverter {
 			if( oneTree instanceof DCText || oneTree instanceof DCStartElement || oneTree instanceof DCEndElement || oneTree instanceof DCEntity) {
 				combinable.add(oneTree);
 			} else {
-				elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
-				combinable.clear();
-				elements.addAll(convertElement(oneTree).toList());
+				if( oneTree instanceof DCErroneous derror) {
+					IDocElement de = convertDCErroneousElement(derror);
+					if( de == null ) {
+						combinable.add(oneTree);
+					} else {
+						elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
+						combinable.clear();
+						elements.addAll(convertElement(oneTree).toList());
+					}
+				} else {
+					elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
+					combinable.clear();
+					elements.addAll(convertElement(oneTree).toList());
+				}
 			}
 		}
 		elements.addAll(convertElementGroup(combinable.toArray(new DCTree[0])).toList());
@@ -489,28 +533,15 @@ class JavadocConverter {
 				return blockTag.get();
 			}
 		} else if (javac instanceof DCErroneous erroneous) {
-			String body = erroneous.body;
-			MethodRef match = matchesMethodReference(erroneous, body);
-			if( match != null) {
-				TagElement res = this.ast.newTagElement();
-				res.setTagName(TagElement.TAG_SEE);
-				res.fragments.add(match);
-				res.setSourceRange(this.docComment.getSourcePosition(erroneous.getStartPosition()), body.length());
-				return Stream.of(res);
-			} else if( body.startsWith("@")) {
-				TagElement res = this.ast.newTagElement();
-				String tagName = body.split("\\s+")[0];
-				res.setTagName(tagName);
-				//res.fragments.add(match);
-				res.setSourceRange(this.docComment.getSourcePosition(erroneous.getStartPosition()), body.length());
-				return Stream.of(res);
-			} else {
-				TextElement res = this.ast.newTextElement();
-				commonSettings(res, erroneous);
-				res.setText(erroneous.body);
-				diagnostics.add(erroneous.diag);
-				return Stream.of(res);
+			IDocElement docE = convertDCErroneousElement(erroneous);
+			if( docE != null ) {
+				return Stream.of(docE);
 			}
+			TextElement res = this.ast.newTextElement();
+			commonSettings(res, erroneous);
+			res.setText(erroneous.body);
+			diagnostics.add(erroneous.diag);
+			return Stream.of(res);
 		} else if (javac instanceof DCComment comment) {
             TextElement res = this.ast.newTextElement();
             commonSettings(res, comment);
@@ -530,6 +561,26 @@ class JavadocConverter {
 		return Stream.of(res);
 	}
 
+	private IDocElement convertDCErroneousElement(DCErroneous erroneous) {
+		String body = erroneous.body;
+		MethodRef match = matchesMethodReference(erroneous, body);
+		if( match != null) {
+			TagElement res = this.ast.newTagElement();
+			res.setTagName(TagElement.TAG_SEE);
+			res.fragments.add(match);
+			res.setSourceRange(this.docComment.getSourcePosition(erroneous.getStartPosition()), body.length());
+			return res;
+		} else if( body.startsWith("@")) {
+			TagElement res = this.ast.newTagElement();
+			String tagName = body.split("\\s+")[0];
+			res.setTagName(tagName);
+			//res.fragments.add(match);
+			res.setSourceRange(this.docComment.getSourcePosition(erroneous.getStartPosition()), body.length());
+			return res;
+		}
+		return null;
+	}
+	
 	private MethodRef matchesMethodReference(DCErroneous tree, String body) {
 		if( body.startsWith("@see")) {
 			String value = body.substring(4);
@@ -623,14 +674,17 @@ class JavadocConverter {
 				super.preVisit(node);
 			}
 		});
+		String[] segments = range.getContents().trim().split("\s");
 		if (jdtType.getStartPosition() + jdtType.getLength() < res.getStartPosition() + res.getLength()) {
-			String[] segments = range.getContents().trim().split("\s");
 			if (segments.length > 1) {
 				String nameSegment = segments[segments.length - 1];
 				SimpleName name = this.ast.newSimpleName(nameSegment);
 				name.setSourceRange(this.javacConverter.rawText.lastIndexOf(nameSegment, range.endPosition()), nameSegment.length());
 				res.setName(name);
 			}
+		}
+		if( segments.length > 0 && segments[segments.length-1].endsWith("...")) {
+			res.setVarargs(true);
 		}
 		return res;
 	}
