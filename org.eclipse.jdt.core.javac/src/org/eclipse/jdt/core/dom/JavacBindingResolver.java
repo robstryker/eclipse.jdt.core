@@ -39,8 +39,11 @@ import org.eclipse.jdt.internal.javac.dom.JavacTypeBinding;
 import org.eclipse.jdt.internal.javac.dom.JavacTypeVariableBinding;
 import org.eclipse.jdt.internal.javac.dom.JavacVariableBinding;
 
+import com.sun.source.doctree.DocTree;
+import com.sun.source.tree.Tree;
 import com.sun.source.util.DocTreePath;
 import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreePath;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Attribute.Compound;
@@ -1374,6 +1377,15 @@ public class JavacBindingResolver extends BindingResolver {
 			if(e instanceof Symbol symbol) {
 				IBinding r1 = this.bindings.getBinding(symbol, null);
 				return r1;
+			}
+			TreePath dt = path.getTreePath();
+			if( dt != null) {
+				Tree t = dt.getLeaf();
+				if( t instanceof JCMethodDecl jcmd) {
+					MethodSymbol ms = jcmd.sym;
+					IBinding r1 = ms == null ? null : this.bindings.getBinding(ms, jcmd.type);
+					return r1;
+				}
 			}
 		}
 		if( ref.parameters() != null && ref.parameters().size() == 0) {

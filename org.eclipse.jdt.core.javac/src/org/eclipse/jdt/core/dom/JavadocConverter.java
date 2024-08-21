@@ -445,86 +445,31 @@ class JavadocConverter {
 			return Stream.of(res);
 		} else if (javac instanceof DCReference reference) {
 			String signature = reference.getSignature();
-			if (reference.memberName != null) {
-				if (signature.charAt(signature.length() - 1) == ')') {
-					MethodRef res = this.ast.newMethodRef();
-					commonSettings(res, javac);
-					int currentOffset = this.docComment.getSourcePosition(reference.getStartPosition());
-					if (reference.qualifierExpression != null) {
-						Name qualifierExpressionName = toName(reference.qualifierExpression, res.getStartPosition());
-						qualifierExpressionName.setSourceRange(currentOffset, Math.max(0, reference.qualifierExpression.toString().length()));
-						res.setQualifier(qualifierExpressionName);
-						currentOffset += qualifierExpressionName.getLength();
-					}
-					currentOffset++; // #
-					SimpleName name = this.ast.newSimpleName(reference.memberName.toString());
-					name.setSourceRange(currentOffset, Math.max(0, reference.memberName.toString().length()));
-					currentOffset += name.getLength();
-					res.setName(name);
-					if (this.contextTreePath != null) {
-						this.converted.put(name, DocTreePath.getPath(this.contextTreePath, this.docComment, reference));
-					}
-					currentOffset++; // (
-					final int paramListOffset = currentOffset;
-					List<Region> params = new ArrayList<>();
-					int separatorOffset = currentOffset;
-					while (separatorOffset < res.getStartPosition() + res.getLength()
-							&& this.javacConverter.rawText.charAt(separatorOffset) != ')') {
-						while (separatorOffset < res.getStartPosition() + res.getLength()
-							&& this.javacConverter.rawText.charAt(separatorOffset) != ')'
-							&& this.javacConverter.rawText.charAt(separatorOffset) != ',') {
-							separatorOffset++;
+			if (!signature.contains("#")) {
+				if( reference.qualifierExpression != null ) {
+					Name res = this.javacConverter.toName(reference.qualifierExpression, (dom, javacNode) -> {
+						int startPosition = this.docComment.getSourcePosition(reference.getPreferredPosition()) + javacNode.getStartPosition();
+						dom.setSourceRange(startPosition, dom.getLength());
+						if (this.contextTreePath != null) {
+							this.converted.put(dom, DocTreePath.getPath(this.contextTreePath, this.docComment, javac));
 						}
-						params.add(new Region(currentOffset, separatorOffset - currentOffset));
-						separatorOffset++; // consume separator
-						currentOffset = separatorOffset;
-					}
-					for (int i = 0; i < reference.paramTypes.size(); i++) {
-						JCTree type = reference.paramTypes.get(i);
-						Region range = i < params.size() ? params.get(i) : null;
-						res.parameters().add(toMethodRefParam(type, range, paramListOffset));
-					}
+					});
 					return Stream.of(res);
 				} else {
-					MemberRef res = this.ast.newMemberRef();
-					commonSettings(res, javac);
-					SimpleName name = this.ast.newSimpleName(reference.memberName.toString());
-					name.setSourceRange(this.docComment.getSourcePosition(javac.getStartPosition()), Math.max(0, reference.memberName.toString().length()));
-					if (this.contextTreePath != null) {
-						this.converted.put(res, DocTreePath.getPath(this.contextTreePath, this.docComment, reference));
-					}
-					res.setName(name);
-					if (reference.qualifierExpression != null) {
-						Name qualifierExpressionName = toName(reference.qualifierExpression, res.getStartPosition());
-						qualifierExpressionName.setSourceRange(this.docComment.getSourcePosition(reference.pos), Math.max(0, reference.qualifierExpression.toString().length()));
-						res.setQualifier(qualifierExpressionName);
-					}
+					// just return it as text
+					int startPosition = this.docComment.getSourcePosition(reference.getPreferredPosition());
+					TextElement res = this.ast.newTextElement();
+					res.setText(signature);
+					res.setSourceRange(startPosition, reference.getEndPos() - reference.pos);
 					return Stream.of(res);
 				}
-			} else if (!signature.contains("#")) {
-				Name res = this.javacConverter.toName(reference.qualifierExpression, (dom, javacNode) -> {
-					int startPosition = this.docComment.getSourcePosition(reference.getPreferredPosition()) + javacNode.getStartPosition();
-					dom.setSourceRange(startPosition, dom.getLength());
-//					if( javacNode.getStartPosition() == 0 && javacNode.type == null ) {
-//						int len = reference.getEndPosition() - reference.getPreferredPosition();
-//						dom.setSourceRange(startPosition, len > -1 ? len : 0);
-//						String s2 = this.javacConverter.rawText.substring(dom.getStartPosition(), dom.getStartPosition() + dom.getLength());
-//						int z = 4;
-//					} else { 
-//						dom.setSourceRange(startPosition, dom.getLength());
-//					}
-					if (this.contextTreePath != null) {
-						this.converted.put(dom, DocTreePath.getPath(this.contextTreePath, this.docComment, javac));
-					}
-				});
-//				res.accept(new ASTVisitor() {
-//					@Override
-//					public void preVisit(ASTNode node) {
-//						JavadocConverter.this.converted.put(node, DocTreePath.getPath(JavadocConverter.this.contextTreePath, JavadocConverter.this.docComment, reference));
-//					}
-//				});
-				return Stream.of(res);
-			}
+			} else if (reference.memberName != null) {
+				if (signature.charAt(signature.length() - 1) == ')') {
+					return Stream.of(convertMemberReferenceWithParens(reference));
+				} else {
+					return Stream.of(convertReferenceToNameOnly(reference));
+				}
+			} 
 		} else if (javac instanceof DCStartElement || javac instanceof DCEndElement || javac instanceof DCEntity) {
 			return Stream.of(toDefaultTextElement(javac));
 		} else if (javac instanceof DCBlockTag || javac instanceof DCReturn) {
@@ -559,6 +504,64 @@ class JavadocConverter {
 		commonSettings(res, javac);
 		res.setText(this.docComment.comment.getText().substring(javac.getStartPosition(), javac.getEndPosition()) + System.lineSeparator() + message);
 		return Stream.of(res);
+	}
+
+	private IDocElement convertMemberReferenceWithParens(DCReference reference) {
+		MethodRef res = this.ast.newMethodRef();
+		commonSettings(res, reference);
+		int currentOffset = this.docComment.getSourcePosition(reference.getStartPosition());
+		if (reference.qualifierExpression != null) {
+			Name qualifierExpressionName = toName(reference.qualifierExpression, res.getStartPosition());
+			qualifierExpressionName.setSourceRange(currentOffset, Math.max(0, reference.qualifierExpression.toString().length()));
+			res.setQualifier(qualifierExpressionName);
+			currentOffset += qualifierExpressionName.getLength();
+		}
+		currentOffset++; // #
+		SimpleName name = this.ast.newSimpleName(reference.memberName.toString());
+		name.setSourceRange(currentOffset, Math.max(0, reference.memberName.toString().length()));
+		currentOffset += name.getLength();
+		res.setName(name);
+		if (this.contextTreePath != null) {
+			this.converted.put(name, DocTreePath.getPath(this.contextTreePath, this.docComment, reference));
+		}
+		currentOffset++; // (
+		final int paramListOffset = currentOffset;
+		List<Region> params = new ArrayList<>();
+		int separatorOffset = currentOffset;
+		while (separatorOffset < res.getStartPosition() + res.getLength()
+				&& this.javacConverter.rawText.charAt(separatorOffset) != ')') {
+			while (separatorOffset < res.getStartPosition() + res.getLength()
+				&& this.javacConverter.rawText.charAt(separatorOffset) != ')'
+				&& this.javacConverter.rawText.charAt(separatorOffset) != ',') {
+				separatorOffset++;
+			}
+			params.add(new Region(currentOffset, separatorOffset - currentOffset));
+			separatorOffset++; // consume separator
+			currentOffset = separatorOffset;
+		}
+		for (int i = 0; i < reference.paramTypes.size(); i++) {
+			JCTree type = reference.paramTypes.get(i);
+			Region range = i < params.size() ? params.get(i) : null;
+			res.parameters().add(toMethodRefParam(type, range, paramListOffset));
+		}
+		return res;
+	}
+
+	private IDocElement convertReferenceToNameOnly(DCReference reference) {
+		MemberRef res = this.ast.newMemberRef();
+		commonSettings(res, reference);
+		SimpleName name = this.ast.newSimpleName(reference.memberName.toString());
+		name.setSourceRange(this.docComment.getSourcePosition(reference.getStartPosition()), Math.max(0, reference.memberName.toString().length()));
+		if (this.contextTreePath != null) {
+			this.converted.put(res, DocTreePath.getPath(this.contextTreePath, this.docComment, reference));
+		}
+		res.setName(name);
+		if (reference.qualifierExpression != null) {
+			Name qualifierExpressionName = toName(reference.qualifierExpression, res.getStartPosition());
+			qualifierExpressionName.setSourceRange(this.docComment.getSourcePosition(reference.pos), Math.max(0, reference.qualifierExpression.toString().length()));
+			res.setQualifier(qualifierExpressionName);
+		}
+		return res;
 	}
 
 	private IDocElement convertDCErroneousElement(DCErroneous erroneous) {

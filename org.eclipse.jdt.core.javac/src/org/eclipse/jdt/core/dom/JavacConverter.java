@@ -456,7 +456,7 @@ class JavacConverter {
 			commonSettings(n, jcta.clazz);
 			return n;
 		}
-		throw new UnsupportedOperationException("toName for " + expression + " (" + expression.getClass().getName() + ")");
+		throw new UnsupportedOperationException("toName for " + expression + " (" + expression == null ? "null" : expression.getClass().getName() + ")");
 	}
 
 	private AbstractTypeDeclaration convertClassDecl(JCClassDecl javacClassDecl, ASTNode parent) {
