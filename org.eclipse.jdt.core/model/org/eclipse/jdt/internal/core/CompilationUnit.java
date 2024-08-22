@@ -36,6 +36,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.PerformanceStats;
+import org.eclipse.jdt.core.BufferChangedEvent;
 import org.eclipse.jdt.core.CompletionRequestor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IBuffer;
@@ -277,8 +278,6 @@ protected boolean buildStructure(OpenableElementInfo info, final IProgressMonito
 				(reconcileFlags & ICompilationUnit.IGNORE_METHOD_BODIES) == 0) {
 				// most complete possible AST
 				this.ast = newAST;
-			} else {
-				this.ast = null;
 			}
 		}
 	} else {
@@ -530,14 +529,7 @@ public IJavaElement[] codeSelect(int offset, int length, WorkingCopyOwner workin
 }
 
 public org.eclipse.jdt.core.dom.CompilationUnit getOrBuildAST(WorkingCopyOwner workingCopyOwner) throws JavaModelException {
-	// https://github.com/eclipse-jdtls/eclipse-jdt-core-incubator/pull/133
-	// we should find some better condition than this as we would like to avoid calling twice this method
-	// on the same unsaved working copy does re-create an AST every time
-	boolean storeAST = isConsistent() &&
-		workingCopyOwner == getOwner() &&
-		isWorkingCopy() &&
-		!hasUnsavedChanges();
-	if (this.ast != null && storeAST) {
+	if (this.ast != null) {
 		return this.ast;
 	}
 	Map<String, String> options = getOptions(true);
@@ -550,16 +542,16 @@ public org.eclipse.jdt.core.dom.CompilationUnit getOrBuildAST(WorkingCopyOwner w
 	parser.setBindingsRecovery(true);
 	parser.setCompilerOptions(options);
 	if (parser.createAST(null) instanceof org.eclipse.jdt.core.dom.CompilationUnit newAST) {
-		if (storeAST) {
-			return this.ast = newAST;
-		} else {
-			return newAST;
-		}
+		this.ast = newAST;
 	}
-	// fallback to local AST
 	return this.ast;
 }
 
+@Override
+public void bufferChanged(BufferChangedEvent event) {
+	this.ast = null;
+	super.bufferChanged(event);
+}
 
 /**
  * @see IWorkingCopy#commit(boolean, IProgressMonitor)
