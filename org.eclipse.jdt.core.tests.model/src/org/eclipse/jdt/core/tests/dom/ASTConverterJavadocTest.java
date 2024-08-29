@@ -2338,6 +2338,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * Bug 80257: [1.5][javadoc][dom] Type references in javadocs should have generic binding, not raw
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=80257"
 	 */
+	@JavacTestIgnore(cause=JavacTestIgnore.VALID_ALTERNATIVE_IMPL)
 	public void testBug80257() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = getJLS3();
@@ -2360,7 +2361,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 			Javadoc docComment = (Javadoc) compilUnit.getCommentList().get(0); // get javadoc comment
 			TagElement firstTag = (TagElement) docComment.tags().get(0); // get first tag
 			TagElement secondTag = (TagElement) docComment.tags().get(1); // get second tag
-			TagElement inlineTag = (TagElement) secondTag.fragments().get(1); // get inline tag
+			TagElement inlineTag = (TagElement) secondTag.fragments().get(secondTag.fragments().size() - 1); // get inline tag
 			// Get tag simple name reference in first tag
 			assertEquals("Invalid number of fragments for tag element: "+firstTag, 1, firstTag.fragments().size());
 			ASTNode node = (ASTNode) firstTag.fragments().get(0);
@@ -2973,6 +2974,10 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * bug103304: [Javadoc] Wrong reference proposal for inner classes.
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=103304"
 	 */
+	// Syntax like @See I.VE#I.VE(params) is not allowed by javac, specifically
+	// the dot in the method name is not allowed and causes a DCErroneous
+	// See https://docs.oracle.com/javase/7/docs/technotes/tools/windows/javadoc.html#see
+	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug103304() throws JavaModelException {
 		this.packageBinding = false; // do NOT verify that qualification only can be package name
 		this.workingCopies = new ICompilationUnit[1];
