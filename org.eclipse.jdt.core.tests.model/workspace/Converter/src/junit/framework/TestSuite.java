@@ -12,7 +12,7 @@ import java.lang.reflect.Constructor;
  * It runs a collection of test cases. Here is an example using
  * the dynamic test definition.
  * <pre>
- * TestSuite suite= new TestSuite();
+ * TestSuite suite= new RecursivelyFilterableTestSuite();
  * suite.addTest(new MathTest("testAdd"));
  * suite.addTest(new MathTest("testDivideByZero"));
  * </pre>
@@ -20,7 +20,7 @@ import java.lang.reflect.Constructor;
  * To do so you pass the class of your TestCase class to the
  * TestSuite constructor.
  * <pre>
- * TestSuite suite= new TestSuite(MathTest.class);
+ * TestSuite suite= new RecursivelyFilterableTestSuite(MathTest.class);
  * </pre>
  * This constructor creates a suite with all the methods
  * starting with "test" that take no arguments.
@@ -50,7 +50,7 @@ public class TestSuite implements Test {
 	/**
 	 * Constructs a TestSuite from the given class. Adds all the methods
 	 * starting with "test" as test cases to the suite.
-	 * Parts of this method was written at 2337 meters in the Hüffihütte,
+	 * Parts of this method was written at 2337 meters in the Hï¿½ffihï¿½tte,
 	 * Kanton Uri
 	 */
 	 public TestSuite(final Class theClass) {
@@ -98,7 +98,7 @@ public class TestSuite implements Test {
 	 * Adds the tests from the given class to the suite
 	 */
 	public void addTestSuite(Class testClass) {
-		addTest(new TestSuite(testClass));
+		addTest(new RecursivelyFilterableTestSuite(testClass));
 	}
 
 	private void addTestMethod(Method m, Vector names, Class theClass) {

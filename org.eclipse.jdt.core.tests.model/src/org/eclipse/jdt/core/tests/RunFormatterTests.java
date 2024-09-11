@@ -21,13 +21,24 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
-
-import org.eclipse.jdt.core.tests.formatter.*;
+import org.eclipse.jdt.core.tests.formatter.FormatterBugs18Tests;
+import org.eclipse.jdt.core.tests.formatter.FormatterBugsTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterCommentsBugsTest;
+import org.eclipse.jdt.core.tests.formatter.FormatterCommentsClearBlankLinesTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterCommentsTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterJSR308Tests;
+import org.eclipse.jdt.core.tests.formatter.FormatterJSR335Tests;
+import org.eclipse.jdt.core.tests.formatter.FormatterJavadocDontIndentTagsDescriptionTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterJavadocDontIndentTagsTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterOldBugsGistTests;
+import org.eclipse.jdt.core.tests.formatter.FormatterRegressionTests;
 import org.eclipse.jdt.core.tests.formatter.comment.CommentsTestSuite;
 import org.eclipse.jdt.core.tests.junit.extension.TestCase;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.util.CleanupAfterSuiteTests;
+
+import junit.framework.Test;
+import junit.framework.TestSuite;
 
 /**
  * Runs all formatter tests.
@@ -53,7 +64,7 @@ public class RunFormatterTests extends junit.framework.TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunFormatterTests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunFormatterTests.class.getName());
 
 		// Store test classes with same "JavaSearch"project
 		FormatterCommentsTests.ALL_TEST_SUITES = new ArrayList(TEST_SUITES);

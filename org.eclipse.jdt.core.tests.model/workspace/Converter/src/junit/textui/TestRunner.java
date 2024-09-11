@@ -54,7 +54,7 @@ public class TestRunner extends BaseTestRunner {
 	 * Runs a suite extracted from a TestCase subclass.
 	 */
 	static public void run(Class testClass) {
-		run(new TestSuite(testClass));
+		run(new RecursivelyFilterableTestSuite(testClass));
 	}
 
 	/**

@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.eclipse.jdt.core.tests.junit.extension.TestCase;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.util.CleanupAfterSuiteTests;
 
 import junit.framework.Test;
@@ -49,7 +50,7 @@ public static Class[] getAllTestClasses() {
 	};
 }
 public static Test suite() {
-	TestSuite ts = new TestSuite(RunAllTests.class.getName());
+	TestSuite ts = new RecursivelyFilterableTestSuite(RunAllTests.class.getName());
 
 	Class[] testClasses = getAllTestClasses();
 	// Reset forgotten subsets of tests

@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -34,7 +35,7 @@ public class RunOnlyJava12Tests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunOnlyJava12Tests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunOnlyJava12Tests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);

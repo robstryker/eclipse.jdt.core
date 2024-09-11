@@ -100,7 +100,7 @@ public abstract class BaseTestRunner implements TestListener {
 	 	} catch(Exception e) {
 	 		// try to extract a test suite automatically
 			clearStatus();
-			return new TestSuite(testClass);
+			return new RecursivelyFilterableTestSuite(testClass);
 		}
 		if (! Modifier.isStatic(suiteMethod.getModifiers())) {
 			runFailed("Suite() method must be static");

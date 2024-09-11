@@ -13,11 +13,12 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.tests;
 
+import org.eclipse.jdt.core.tests.dom.RunAllTests;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-
-import org.eclipse.jdt.core.tests.dom.RunAllTests;
 
 /**
  * Runs all DOM AST tests.
@@ -28,7 +29,7 @@ public RunDOMTests(String name) {
 	super(name);
 }
 public static Test suite() {
-	TestSuite suite = new TestSuite(RunDOMTests.class.getName());
+	TestSuite suite = new RecursivelyFilterableTestSuite(RunDOMTests.class.getName());
 	suite.addTest(RunAllTests.suite());
 	return suite;
 }

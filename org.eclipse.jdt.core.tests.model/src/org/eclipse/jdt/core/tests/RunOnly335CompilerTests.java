@@ -16,10 +16,6 @@ package org.eclipse.jdt.core.tests;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
 import org.eclipse.jdt.core.tests.compiler.regression.GenericTypeTest;
 import org.eclipse.jdt.core.tests.compiler.regression.GenericsRegressionTest;
 import org.eclipse.jdt.core.tests.compiler.regression.GenericsRegressionTest_1_7;
@@ -31,7 +27,12 @@ import org.eclipse.jdt.core.tests.compiler.regression.NegativeLambdaExpressionsT
 import org.eclipse.jdt.core.tests.compiler.regression.NullTypeAnnotationTest;
 import org.eclipse.jdt.core.tests.compiler.regression.OverloadResolutionTest8;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.util.AbstractCompilerTest;
+
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class RunOnly335CompilerTests extends TestCase {
@@ -60,7 +61,7 @@ public class RunOnly335CompilerTests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunOnly335CompilerTests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunOnly335CompilerTests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);
