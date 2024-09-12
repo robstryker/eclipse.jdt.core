@@ -33,11 +33,13 @@ pipeline {
 					# Build and test without DOM-first to ensure no regression takes place
 					mvn -U clean verify --batch-mode --fail-at-end -Dmaven.repo.local=$WORKSPACE/.m2/repository \
 						-Ptest-on-javase-23 -Pbree-libs -Papi-check -Pjavadoc -Pp2-repo \
-						-DexcludedGroups=org.eclipse.jdt.core.tests.javac.JavacTestIgnore \
 						-Dmaven.test.failure.ignore=true \
 						-Dcompare-version-with-baselines.skip=false \
 						-Djava.io.tmpdir=$WORKSPACE/tmp -Dproject.build.sourceEncoding=UTF-8 \
 						-Dtycho.surefire.argLine="--add-modules ALL-SYSTEM -Dcompliance=1.8,11,17,21,23 -Djdt.performance.asserts=disabled" \
+						-DfailIfNoTests=false \
+						-DexcludedGroups=org.junit.Ignore \
+						-DproviderHint=junit47 \
 						-DDetectVMInstallationsJob.disabled=true \
 						-Dtycho.apitools.debug \
 						-Dtycho.debug.artifactcomparator \
@@ -76,6 +78,10 @@ pipeline {
 					mvn verify --batch-mode -f org.eclipse.jdt.core.tests.javac \
 						--fail-at-end -Ptest-on-javase-23 -Pbree-libs \
 						-Papi-check -Djava.io.tmpdir=$WORKSPACE/tmp -Dproject.build.sourceEncoding=UTF-8 \
+						-DfailIfNoTests=false \
+						-DexcludedGroups=org.junit.Ignore \
+						-DproviderHint=junit47 \
+
 						-Dmaven.test.failure.ignore=true -Dmaven.test.error.ignore=true  
 """
 			}
