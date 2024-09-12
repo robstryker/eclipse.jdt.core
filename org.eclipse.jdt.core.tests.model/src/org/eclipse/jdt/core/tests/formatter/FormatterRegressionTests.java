@@ -40,6 +40,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.formatter.CodeFormatter;
 import org.eclipse.jdt.core.formatter.DefaultCodeFormatterConstants;
 import org.eclipse.jdt.core.formatter.IndentManipulation;
+import org.eclipse.jdt.core.tests.javac.JavacTestIgnore;
 import org.eclipse.jdt.core.tests.model.AbstractJavaModelTests;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -49,6 +50,7 @@ import org.eclipse.jdt.internal.formatter.DefaultCodeFormatterOptions.Alignment;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Region;
 import org.eclipse.text.edits.TextEdit;
+import org.junit.experimental.categories.Category;
 
 import junit.framework.Test;
 
@@ -458,20 +460,25 @@ public class FormatterRegressionTests extends AbstractJavaModelTests {
 		return result;
 	}
 
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test001() {
 		runTest("test001", "A.java");//$NON-NLS-1$ //$NON-NLS-2$
 	}
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test002() {
 		runTest("test002", "A.java");//$NON-NLS-1$ //$NON-NLS-2$
 	}
 
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test003() {
 		runTest("test003", "A.java");//$NON-NLS-1$ //$NON-NLS-2$
 	}
 
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test004() {
 		runTest("test004", "A.java");//$NON-NLS-1$ //$NON-NLS-2$
 	}
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test005() {
 		runTest("test005", "A.java");//$NON-NLS-1$ //$NON-NLS-2$
 	}
