@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
 import org.eclipse.jdt.core.tests.model.CompletionTests14;
 import org.eclipse.jdt.core.tests.model.JavaSearchBugs14SwitchExpressionTests;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -44,7 +45,7 @@ public class RunOnlyJava14Tests extends TestCase {
 		};
 	}
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunOnlyJava14Tests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunOnlyJava14Tests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);

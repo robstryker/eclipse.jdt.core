@@ -46,6 +46,7 @@ import org.eclipse.jdt.core.tests.model.JavaSearchBugs17Tests;
 import org.eclipse.jdt.core.tests.model.JavaSearchBugs19Tests;
 import org.eclipse.jdt.core.tests.model.ReconcilerTests;
 import org.eclipse.jdt.core.tests.model.ReconcilerTests21;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.model.ResolveTests21;
 import org.eclipse.jdt.core.tests.model.SealedTypeModelTests;
 import org.eclipse.jdt.core.tests.model.TypeHierarchyTests;
@@ -101,7 +102,7 @@ public class RunVariousSealedTypeTests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunVariousSwitchTests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunVariousSwitchTests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);

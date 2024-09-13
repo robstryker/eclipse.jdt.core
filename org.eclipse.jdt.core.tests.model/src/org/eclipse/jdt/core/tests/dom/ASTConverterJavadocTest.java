@@ -69,6 +69,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.tests.javac.JavacTestIgnore;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
+import org.junit.Ignore;
+import org.junit.experimental.categories.Category;
 
 import junit.framework.Test;
 import junit.framework.TestSuite;
@@ -1953,7 +1955,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	/**
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=53075"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug53075() throws JavaModelException {
 		ICompilationUnit unit = getCompilationUnit("Converter" , "src", "javadoc.testBug53075", "X.java"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 		boolean pb = this.packageBinding;
@@ -2005,7 +2007,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 		this.stopOnFailure = true;
 	}
 
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_BEHAVIOR_STRANGE)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_BEHAVIOR_STRANGE)
 	public void testBug54424() throws JavaModelException {
 		this.stopOnFailure = false;
 		String [] unbound = { "tho",
@@ -2040,7 +2042,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	/**
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=51660"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
 	public void testBug51660() throws JavaModelException {
 		this.stopOnFailure = false;
 		ICompilationUnit unit = getCompilationUnit("Converter" , "src", "javadoc.testBug51660", "Test.java"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
@@ -2133,7 +2135,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * Bug 65174: Spurious "Javadoc: Missing reference" error
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=65174"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug65174() throws JavaModelException {
 		verifyComments("testBug65174");
 	}
@@ -2142,7 +2144,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * Bug 65253: [Javadoc] @@tag is wrongly parsed as @tag
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=65253"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	// See https://docs.oracle.com/en/java/javase/22/docs/specs/javadoc/doc-comment-spec.html
 	//@@, to represent @, to prevent it from being interpreted as part of the introduction of a block or inline tag,
 	public void testBug65253() throws JavaModelException {
@@ -2210,14 +2212,14 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=70892"
 	 * @deprecated using deprecated code
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug70892_JLS2() throws JavaModelException {
 		int level = this.astLevel;
 		this.astLevel = AST.JLS2;
 		verifyComments("testBug70892");
 		this.astLevel = level;
 	}
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug70892_JLS3() throws JavaModelException {
 		int level = this.astLevel;
 		this.astLevel = getJLS3();
@@ -2317,7 +2319,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=80221"
 	 */
 	// Resolving "Object" should not be controversial since it is a well known type
-	@JavacTestIgnore(cause=JavacTestIgnore.VALID_ALTERNATIVE_IMPL)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.VALID_ALTERNATIVE_IMPL)
 	public void testBug80221() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = getJLS3();
@@ -2574,7 +2576,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 		}
 	}
 
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void testBug93880_15c() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = getJLS3();
@@ -2792,7 +2794,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * Bug 99507: [javadoc] Infinit loop in DocCommentParser
 	 * @see "http://bugs.eclipse.org/bugs/show_bug.cgi?id=99507"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void testBug99507() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.workingCopies[0] = getWorkingCopy("/Converter15/src/javadoc/b99507/X.java",
@@ -2979,7 +2981,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	// Syntax like @See I.VE#I.VE(params) is not allowed by javac, specifically
 	// the dot in the method name is not allowed and causes a DCErroneous
 	// See https://docs.oracle.com/javase/7/docs/technotes/tools/windows/javadoc.html#see
-	@JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_RECOVERS_FROM_BAD_INPUTS)
 	public void testBug103304() throws JavaModelException {
 		this.packageBinding = false; // do NOT verify that qualification only can be package name
 		this.workingCopies = new ICompilationUnit[1];
@@ -3289,7 +3291,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * bug125903: [javadoc] Treat whitespace in javadoc tags as invalid tags
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=125903"
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
 	public void testBug125903() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = getJLS3();
@@ -3447,7 +3449,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 		verifyComments(unit);
 	}
 	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=196714
-	@JavacTestIgnore(cause=JavacTestIgnore.VALID_ALTERNATIVE_IMPL)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.VALID_ALTERNATIVE_IMPL)
 	public void test109() throws JavaModelException {
 		verifyComments("test109");
 	}
@@ -3535,7 +3537,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=206345"
 	 * @deprecated
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
 	public void testBug206345a() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = AST.JLS3;
@@ -3583,7 +3585,7 @@ public class ASTConverterJavadocTest extends ConverterTestSetup {
 	 *
 	 * @deprecated
 	 */
-	@JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
+	@Category(value=Ignore.class) @JavacTestIgnore(cause=JavacTestIgnore.TESTS_SPECIFIC_RESULT_FOR_UNDEFINED_BEHAVIOR)
 	public void testBug206345b() throws JavaModelException {
 		this.workingCopies = new ICompilationUnit[1];
 		this.astLevel = AST.JLS3;
