@@ -19,6 +19,8 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
+
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -45,7 +47,7 @@ public class RunFormatterMassiveTests extends junit.framework.TestCase {
 	};
 
 public static Test suite() {
-	TestSuite ts = new TestSuite(RunFormatterMassiveTests.class.getName());
+	TestSuite ts = new RecursivelyFilterableTestSuite(RunFormatterMassiveTests.class.getName());
 
 	// Reset forgotten subsets of tests
 	TestCase.TESTS_PREFIX = null;
