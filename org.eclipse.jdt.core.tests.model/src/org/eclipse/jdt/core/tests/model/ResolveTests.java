@@ -2667,7 +2667,7 @@ public void testCodeSelectInHybrid1415Projects() throws CoreException, IOExcepti
 			"/Resolve/src/Test.java",
 			"public class TextEditTests extends TestCase {\n" +
 			"	{\n" +
-			"		new TestSuite(TextEditTests.class);\n" +
+			"		new RecursivelyFilterableTestSuite(TextEditTests.class);\n" +
 			"	}\n" +
 			"}\n");
 

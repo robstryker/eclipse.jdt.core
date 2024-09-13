@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.eclipse.jdt.core.tests.junit.extension.TestCase;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 
 import junit.framework.Test;
 import junit.framework.TestSuite;
@@ -68,7 +69,7 @@ public static Class[] getAllTestClasses() {
 	};
 }
 public static Test suite() {
-	TestSuite ts = new TestSuite(RunConverterTests.class.getName());
+	TestSuite ts = new RecursivelyFilterableTestSuite(RunConverterTests.class.getName());
 
 	ConverterTestSetup.TEST_SUITES = new ArrayList(Arrays.asList(getAllTestClasses()));
 	// Reset forgotten subsets of tests

@@ -31,6 +31,7 @@ import org.eclipse.jdt.core.tests.compiler.regression.NegativeLambdaExpressionsT
 import org.eclipse.jdt.core.tests.compiler.regression.NullTypeAnnotationTest;
 import org.eclipse.jdt.core.tests.compiler.regression.OverloadResolutionTest8;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.util.AbstractCompilerTest;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -60,7 +61,7 @@ public class RunOnly335CompilerTests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunOnly335CompilerTests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunOnly335CompilerTests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);
