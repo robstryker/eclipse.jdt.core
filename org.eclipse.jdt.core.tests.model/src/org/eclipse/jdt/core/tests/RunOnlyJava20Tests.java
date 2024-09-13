@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.eclipse.jdt.core.tests.compiler.regression.RecordPatternTest;
 import org.eclipse.jdt.core.tests.compiler.regression.SwitchPatternTest;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -44,7 +45,7 @@ public class RunOnlyJava20Tests extends TestCase {
 		};
 	}
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunOnlyJava20Tests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunOnlyJava20Tests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);

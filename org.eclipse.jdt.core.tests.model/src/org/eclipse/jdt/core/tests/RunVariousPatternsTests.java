@@ -34,6 +34,7 @@ import org.eclipse.jdt.core.tests.dom.ASTConverter_RecordPattern_Test;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
 import org.eclipse.jdt.core.tests.model.CompletionTestsForRecordPattern;
 import org.eclipse.jdt.core.tests.model.JavaSearchBugs19Tests;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.model.ResolveTests12To15;
 import org.eclipse.jdt.core.tests.rewrite.describing.ASTRewritingInstanceOfPatternExpressionTest;
 import org.eclipse.jdt.core.tests.rewrite.describing.ASTRewritingRecordPatternTest;
@@ -76,7 +77,7 @@ public class RunVariousPatternsTests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunVariousPatternsTests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunVariousPatternsTests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);

@@ -16,6 +16,8 @@ package org.eclipse.jdt.core.tests;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -39,7 +41,7 @@ public static Class[] getAllTestClasses() {
 	};
 }
 public static Test suite() {
-	TestSuite ts = new TestSuite(RunCompilerTests.class.getName());
+	TestSuite ts = new RecursivelyFilterableTestSuite(RunCompilerTests.class.getName());
 
 	Class[] testClasses = getAllTestClasses();
 	for (int i = 0; i < testClasses.length; i++) {

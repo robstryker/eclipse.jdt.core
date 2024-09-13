@@ -22,8 +22,10 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.jdom.*;
+import org.eclipse.jdt.core.tests.javac.JavacTestIgnore;
 import org.eclipse.jdt.core.util.IModifierConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import org.junit.experimental.categories.Category;
 
 import junit.framework.Test;
 
@@ -3343,6 +3345,7 @@ public class ASTConverterTest extends ConverterTestSetup {
 	 * Checking initializers
 	 * @deprecated marking deprecated since using deprecated code
 	 */
+	@Category(value=JavacTestIgnore.class) @JavacTestIgnore(cause=JavacTestIgnore.JDT_VIOLATES_SPEC)
 	public void test0147() throws JavaModelException {
 		ICompilationUnit sourceUnit = getCompilationUnit("Converter" , "src", "test0147", "Test.java"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 		char[] source = sourceUnit.getSource().toCharArray();

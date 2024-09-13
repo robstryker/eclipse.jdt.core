@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 import org.eclipse.jdt.core.tests.builder.BuilderTests11;
 import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
 import org.eclipse.jdt.core.tests.model.CompletionTests11;
+import org.eclipse.jdt.core.tests.model.RecursivelyFilterableTestSuite;
 import org.eclipse.jdt.core.tests.util.AbstractCompilerTest;
 
 import junit.framework.Test;
@@ -53,7 +54,7 @@ public class RunAllJava11Tests extends TestCase {
 	}
 
 	public static Test suite() {
-		TestSuite ts = new TestSuite(RunAllJava11Tests.class.getName());
+		TestSuite ts = new RecursivelyFilterableTestSuite(RunAllJava11Tests.class.getName());
 
 		Class[] testClasses = getAllTestClasses();
 		addTestsToSuite(ts, testClasses);
