@@ -202,11 +202,10 @@ protected boolean buildStructure(OpenableElementInfo info, final IProgressMonito
 		ASTParser astParser = ASTParser.newParser(info instanceof ASTHolderCUInfo astHolder && astHolder.astLevel > 0 ? astHolder.astLevel : AST.getJLSLatest());
 		astParser.setWorkingCopyOwner(getOwner());
 		astParser.setSource(this instanceof ClassFileWorkingCopy ? source : this);
-		if (resolveBindings || computeProblems) {
-			astParser.setProject(getJavaProject());
-		} else {
-			// workaround https://github.com/eclipse-jdt/eclipse.jdt.core/issues/2204
-			// skips many operations, and prevents from conflicting classpath computation
+		astParser.setProject(getJavaProject());
+		if ("module-info.java".equals(getElementName())) { //$NON-NLS-1$
+//			// workaround https://github.com/eclipse-jdt/eclipse.jdt.core/issues/2204
+//			// prevents from conflicting classpath computation
 			astParser.setProject(null);
 		}
 		astParser.setStatementsRecovery((reconcileFlags & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0);
