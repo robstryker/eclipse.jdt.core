@@ -1055,9 +1055,9 @@ public class DOMToModelPopulator extends ASTVisitor {
 			.map(RequiresDirective.class::cast)
 			.map(this::toModuleReferenceInfo)
 			.toList());
-		if (!Arrays.equals(node.getName().toString().toCharArray(), TypeConstants.JAVA_BASE)) {
+		if (!"java.base".equals(node.getName().toString())) { //$NON-NLS-1$
 			ModuleReferenceInfo ref = new ModuleReferenceInfo();
-			ref.name = TypeConstants.JAVA_BASE;
+			ref.name = "java.base".toCharArray(); //$NON-NLS-1$
 			requires.add(ref);
 		}
 		newInfo.requires = requires.toArray(ModuleReferenceInfo[]::new);
