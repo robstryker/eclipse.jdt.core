@@ -366,7 +366,7 @@ public class DOMCodeSelector {
 				impl.getElementInfo() instanceof AnnotatableInfo annotable &&
 				annotable.getNameSourceStart() >= 0 &&
 				annotable.getNameSourceStart() <= offset &&
-				annotable.getNameSourceEnd() >= offset) {
+				annotable.getNameSourceEnd() + 1 /* end exclusive vs offset inclusive */ >= offset) {
 			return new IJavaElement[] { currentElement };
 		}
 		if (insideComment) {
