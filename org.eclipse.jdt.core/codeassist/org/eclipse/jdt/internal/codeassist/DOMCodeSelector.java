@@ -70,6 +70,7 @@ import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchEngine;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.eclipse.jdt.internal.core.AnnotatableInfo;
@@ -615,15 +616,15 @@ public class DOMCodeSelector {
 				indexMatch.add(match.getType());
 			}
 		};
-		IJavaSearchScope scope = BasicSearchEngine.createJavaSearchScope(new IJavaProject[] { this.unit.getJavaProject() });
-		new BasicSearchEngine(this.owner).searchAllTypeNames(
+		IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaProject[] { this.unit.getJavaProject() });
+		new SearchEngine(this.owner).searchAllTypeNames(
 			packageName != null ? packageName.toCharArray() : null,
 			SearchPattern.R_EXACT_MATCH,
 			simpleName.toCharArray(),
 			SearchPattern.R_EXACT_MATCH | SearchPattern.R_CASE_SENSITIVE,
 			IJavaSearchConstants.TYPE,
 			scope,
-			new TypeNameMatchRequestorWrapper(requestor, scope),
+			requestor,
 			IJavaSearchConstants.WAIT_UNTIL_READY_TO_SEARCH,
 			new NullProgressMonitor());
 		if (!indexMatch.isEmpty()) {
