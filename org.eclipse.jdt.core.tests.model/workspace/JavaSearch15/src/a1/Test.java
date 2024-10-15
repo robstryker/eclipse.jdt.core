@@ -5,4 +5,5 @@ import static e1.Team.*;
 public class Test {
 	@Author(name=PHILIPPE) void foo() {}
 	@Author int t;
+	@Author String z,y,x;
 }

@@ -3787,9 +3787,11 @@ public void testAnnotationType01() throws CoreException {
 	assertSearchResults(
 		"src/a1/Test.java a1.Test [Author]\n" +
 		"src/a1/Test.java a1.Test.t [Author]\n" +
+		"src/a1/Test.java a1.Test.z [Author]\n" +
 		"src/a1/Test.java void a1.Test.foo() [Author]",
 		this.resultCollector);
 }
+
 public void testAnnotationType02() throws CoreException {
 	ICompilationUnit unit = getCompilationUnit("JavaSearch15", "src", "a1", "Test.java");
 	IType type = selectType(unit, "Author");
