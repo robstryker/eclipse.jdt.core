@@ -12,26 +12,8 @@ package org.eclipse.jdt.internal.core.search.matching;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
-import org.eclipse.jdt.core.dom.Comment;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
-import org.eclipse.jdt.core.dom.FieldAccess;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.MethodRef;
-import org.eclipse.jdt.core.dom.MethodReference;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.SuperFieldAccess;
-import org.eclipse.jdt.core.dom.SuperMethodInvocation;
-import org.eclipse.jdt.core.dom.SuperMethodReference;
-import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.*;
 
 public class DOMASTNodeUtils {
 
@@ -41,6 +23,7 @@ public class DOMASTNodeUtils {
 		}
 		if (node instanceof AbstractTypeDeclaration
 			|| node instanceof MethodDeclaration
+			|| node instanceof FieldDeclaration
 			|| node instanceof VariableDeclaration
 			|| node instanceof CompilationUnit
 			|| node instanceof AnnotationTypeMemberDeclaration) {
@@ -53,6 +36,29 @@ public class DOMASTNodeUtils {
 		if (key instanceof CompilationUnit unit) {
 			return unit.getJavaElement();
 		}
+		IJavaElement je = findElementForNodeViaDirectBinding(key);
+		if( je != null ) {
+			return je;
+		}
+		IJavaElement je2 = findElementForNodeCustom(key);
+		return je2;
+	}
+
+	private static IJavaElement findElementForNodeCustom(ASTNode key) {
+		if( key instanceof FieldDeclaration fd ) {
+			List fragments = fd.fragments();
+			if( fragments.size() > 0 ) {
+				VariableDeclarationFragment vdf = (VariableDeclarationFragment)fragments.get(0);
+				if( vdf != null ) {
+					IJavaElement ret = findElementForNodeViaDirectBinding(vdf);
+					return ret;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static IJavaElement findElementForNodeViaDirectBinding(ASTNode key) {
 		return Optional.ofNullable(key).map(DOMASTNodeUtils::getBinding).map(IBinding::getJavaElement).orElse(null);
 	}
 
