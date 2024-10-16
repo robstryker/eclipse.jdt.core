@@ -14,19 +14,13 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.util.Arrays;
-
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
-import org.eclipse.jdt.core.dom.ImportDeclaration;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.SimpleType;
-import org.eclipse.jdt.core.dom.Type;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.search.PackageReferenceMatch;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
@@ -128,7 +122,8 @@ public int match(Reference node, MatchingNodeSet nodeSet) { // interested in Qua
 }
 @Override
 public int match(Name node, MatchingNodeSet nodeSet) { // interested in QualifiedNameReference
-	return nodeSet.addMatch(node, matchLevelForTokens(Arrays.stream(node.getFullyQualifiedName().split("\\.")).map(String::toCharArray).toArray(char[][]::new))); //$NON-NLS-1$
+	char[][] arr = Arrays.stream(node.getFullyQualifiedName().split("\\.")).map(String::toCharArray).toArray(char[][]::new);//$NON-NLS-1$
+	return nodeSet.addMatch(node, matchLevelForTokens(arr));
 }
 //public int match(TypeDeclaration node, MatchingNodeSet nodeSet) - SKIP IT
 @Override
@@ -142,13 +137,20 @@ public int match(TypeReference node, MatchingNodeSet nodeSet) { // interested in
 }
 @Override
 public int match(Type node, MatchingNodeSet nodeSet) { // interested in QualifiedTypeReference only
-	return node instanceof SimpleType type ? match(type.getName(), nodeSet) : IMPOSSIBLE_MATCH;
-//	if (node instanceof JavadocSingleTypeReference) {
-//		char[][] tokens = new char[][] { ((JavadocSingleTypeReference) node).token };
-//		return nodeSet.addMatch(node, matchLevelForTokens(tokens));
-//	}
-//	if (!(node instanceof QualifiedTypeReference)) return IMPOSSIBLE_MATCH;
-//	return nodeSet.addMatch(node, matchLevelForTokens(((QualifiedTypeReference) node).tokens));
+	if( node instanceof ArrayType att) {
+		return match(att.getElementType(), nodeSet);
+	}
+	Name typePkg = null;
+	if( node instanceof SimpleType stt) {
+		Name n = stt.getName();
+		typePkg = n instanceof QualifiedName qn ? qn.getQualifier() : n;
+	} else if( node instanceof QualifiedType qt3) {
+		Type t1 = qt3.getQualifier();
+		typePkg = t1 instanceof SimpleType sttt ? sttt.getName() : null;
+	} else if( node instanceof NameQualifiedType qt) {
+		typePkg = qt.getQualifier();
+	}
+	return typePkg != null ? match(typePkg, nodeSet) : IMPOSSIBLE_MATCH;
 }
 
 

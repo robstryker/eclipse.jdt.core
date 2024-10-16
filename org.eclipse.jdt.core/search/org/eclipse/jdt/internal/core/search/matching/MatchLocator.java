@@ -1367,7 +1367,9 @@ protected void locateMatchesWithASTParser(JavaProject javaProject, PossibleMatch
 				.ifPresent(match -> asts.put(match, ast));
 		}
 	}, this.progressMonitor); // todo, use a subprogressmonitor or slice it
-	asts.forEach((possibleMatch, ast) -> ast.accept(new PatternLocatorVisitor(this.patternLocator, possibleMatch.nodeSet)));
+	asts.forEach((possibleMatch, ast) -> {
+		ast.accept(new PatternLocatorVisitor(this.patternLocator, possibleMatch.nodeSet));
+	});
 	asts.keySet().forEach(possibleMatch -> {
 		this.currentPossibleMatch = possibleMatch;
 		possibleMatch.nodeSet.trustedASTNodeLevels.forEach((node, level) -> {
