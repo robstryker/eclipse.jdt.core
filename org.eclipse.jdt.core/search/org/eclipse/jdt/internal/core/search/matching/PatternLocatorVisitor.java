@@ -235,6 +235,11 @@ class PatternLocatorVisitor extends ASTVisitor {
 			level = this.patternLocator.resolveLevel(node.resolveBinding());
 		}
 		this.nodeSet.addMatch(node, level);
+		return false;
+	}
+
+	@Override
+	public boolean visit(ImportDeclaration node) {
 		return true;
 	}
 }

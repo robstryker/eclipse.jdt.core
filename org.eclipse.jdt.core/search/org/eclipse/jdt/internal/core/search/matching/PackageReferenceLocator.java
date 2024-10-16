@@ -390,8 +390,14 @@ public int resolveLevel(Binding binding) {
 }
 @Override
 public int resolveLevel(IBinding binding) {
-	return binding instanceof IPackageBinding ?
-		ACCURATE_MATCH : IMPOSSIBLE_MATCH;
+	if( binding instanceof IPackageBinding ipb) {
+		String n = ipb.getName();
+		String patternName = new String(this.pattern.pkgName);
+		if( patternName.equals(n)) {
+			return ACCURATE_MATCH;
+		}
+	}
+	return IMPOSSIBLE_MATCH;
 }
 protected int resolveLevel(QualifiedNameReference qNameRef) {
 	TypeBinding typeBinding = null;
