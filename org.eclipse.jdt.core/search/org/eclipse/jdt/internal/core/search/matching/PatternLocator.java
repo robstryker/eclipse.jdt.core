@@ -15,59 +15,26 @@ package org.eclipse.jdt.internal.core.search.matching;
 
 
 import java.util.regex.Pattern;
-
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.ArrayType;
-import org.eclipse.jdt.core.dom.FieldAccess;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.PrimitiveType;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.QualifiedType;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SimpleType;
-import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.search.SearchMatch;
 import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.Annotation;
-import org.eclipse.jdt.internal.compiler.ast.ConstructorDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.Expression;
 import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ImportReference;
 import org.eclipse.jdt.internal.compiler.ast.LambdaExpression;
-import org.eclipse.jdt.internal.compiler.ast.LocalDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.MemberValuePair;
-import org.eclipse.jdt.internal.compiler.ast.MessageSend;
 import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.ModuleDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ModuleReference;
-import org.eclipse.jdt.internal.compiler.ast.QualifiedTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.Reference;
-import org.eclipse.jdt.internal.compiler.ast.ReferenceExpression;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeParameter;
-import org.eclipse.jdt.internal.compiler.ast.TypeReference;
-import org.eclipse.jdt.internal.compiler.ast.Wildcard;
-import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
-import org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.lookup.CaptureBinding;
-import org.eclipse.jdt.internal.compiler.lookup.IQualifiedTypeResolutionListener;
-import org.eclipse.jdt.internal.compiler.lookup.IntersectionTypeBinding18;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeVariableBinding;
-import org.eclipse.jdt.internal.compiler.lookup.WildcardBinding;
 import org.eclipse.jdt.internal.core.search.indexing.IIndexConstants;
 
 public abstract class PatternLocator implements IIndexConstants, IQualifiedTypeResolutionListener {
@@ -445,14 +412,25 @@ protected boolean matchesTypeReference(char[] pattern, TypeReference type) {
 
 	return matchesName(pattern, simpleName);
 }
+
+private Name getBaseTypeName(Type type) {
+	if( type instanceof SimpleType simp) {
+		return simp.getName();
+	}
+	if( type instanceof QualifiedType qn) {
+		return qn.getName();
+	}
+	if( type instanceof ArrayType arr) {
+		return getBaseTypeName(arr.getElementType());
+	}
+	return null;
+}
+
 protected boolean matchesTypeReference(char[] pattern, Type type, boolean isVarargs) {
 	if (pattern == null) return true; // null is as if it was "*"
 	if (type == null) return true; // treat as an inexact match
 
-	var name = type instanceof SimpleType simple ? simple.getName() :
-		type instanceof QualifiedType qualified ? qualified.getName() :
-		type instanceof ArrayType array ? array.getElementType() :
-		null;
+	var name = getBaseTypeName(type);
 	var simpleName = name instanceof SimpleName simple ? simple.getIdentifier() :
 		name instanceof QualifiedName qName ? qName.getName().getIdentifier() :
 		type instanceof PrimitiveType primitive ? primitive.getPrimitiveTypeCode().toString() :
