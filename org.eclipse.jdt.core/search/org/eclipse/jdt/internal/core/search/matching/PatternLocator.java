@@ -908,6 +908,11 @@ protected int resolveLevelForType(char[] simpleNamePattern, char[] qualification
 			}
 			break;
 		default:
+			if( type.isLocal() ) {
+				if (CharOperation.prefixEquals(qualifiedPattern, sourceName, this.isCaseSensitive)) {
+					return ACCURATE_MATCH;
+				}
+			}
 			if (CharOperation.match(qualifiedPattern, sourceName, this.isCaseSensitive)) {
 				return ACCURATE_MATCH;
 			}

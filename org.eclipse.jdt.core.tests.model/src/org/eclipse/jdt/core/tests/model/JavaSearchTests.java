@@ -3681,6 +3681,9 @@ public void testEnum02() throws CoreException {
 		"src/e1/Team.java e1.Team.FREDERIC [FREDERIC]",
 		this.resultCollector);
 }
+
+// I don't believe this test can be accuately fixed because there is no AST Node
+// that corresponds to "PHILIPPE(37)" but does not include the anonymous body thereafter
 public void testEnum03() throws CoreException {
 	IType type = getCompilationUnit("JavaSearch15", "src", "e1", "Team.java").getType("Team");
 	IMethod method = type.getMethod("Team", new String[] { "I" });

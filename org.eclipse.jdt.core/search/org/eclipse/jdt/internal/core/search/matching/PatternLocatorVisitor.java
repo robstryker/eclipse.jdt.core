@@ -220,7 +220,9 @@ class PatternLocatorVisitor extends ASTVisitor {
 	public boolean visit(EnumConstantDeclaration node) {
 		int level = this.patternLocator.match(node, this.nodeSet);
 		if ((level & PatternLocator.MATCH_LEVEL_MASK) == PatternLocator.POSSIBLE_MATCH && (this.nodeSet.mustResolve || this.patternLocator.mustResolve)) {
-			level = Math.max(this.patternLocator.resolveLevel(node.resolveVariable()), this.patternLocator.resolveLevel(node.resolveConstructorBinding()));
+			int l1 = this.patternLocator.resolveLevel(node.resolveVariable());
+			int l2 = this.patternLocator.resolveLevel(node.resolveConstructorBinding());
+			level = Math.max(l1, l2);
 		}
 		this.nodeSet.addMatch(node, level);
 		return true;
