@@ -102,6 +102,9 @@ public class DOMASTNodeUtils {
 		if (astNode instanceof MethodReference methodRef) {
 			return methodRef.resolveMethodBinding();
 		}
+		if (astNode instanceof AnnotationTypeMemberDeclaration methodRef) {
+			return methodRef.resolveBinding();
+		}
 		// TODO more...
 		return null;
 	}
