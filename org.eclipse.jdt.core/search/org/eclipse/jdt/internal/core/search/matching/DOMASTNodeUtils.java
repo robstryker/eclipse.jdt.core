@@ -24,7 +24,7 @@ public class DOMASTNodeUtils {
 		if (node instanceof AbstractTypeDeclaration
 			|| node instanceof MethodDeclaration
 			|| node instanceof FieldDeclaration
-			|| node instanceof VariableDeclaration
+			//|| node instanceof VariableDeclaration
 			|| node instanceof CompilationUnit
 			|| node instanceof AnnotationTypeMemberDeclaration) {
 			return getDeclaringJavaElement(node);
