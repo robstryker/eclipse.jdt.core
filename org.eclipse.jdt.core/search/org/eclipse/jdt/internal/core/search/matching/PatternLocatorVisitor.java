@@ -183,7 +183,7 @@ class PatternLocatorVisitor extends ASTVisitor {
 	}
 	@Override
 	public boolean visit(SimpleName node) {
-		if (node.getLocationInParent() == QualifiedName.NAME_PROPERTY ||
+		if (
 			node.getLocationInParent() == VariableDeclarationFragment.NAME_PROPERTY ||
 			node.getLocationInParent() == SingleVariableDeclaration.NAME_PROPERTY ||
 			node.getLocationInParent() == TypeDeclaration.NAME_PROPERTY ||
@@ -196,7 +196,7 @@ class PatternLocatorVisitor extends ASTVisitor {
 			level = this.patternLocator.resolveLevel(node.resolveBinding());
 		}
 		this.nodeSet.addMatch(node, level);
-		return true;
+		return level == 0;
 	}
 	@Override
 	public boolean visit(VariableDeclarationFragment node) {
