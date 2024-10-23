@@ -62,7 +62,7 @@ public class DOMASTNodeUtils {
 		return Optional.ofNullable(key).map(DOMASTNodeUtils::getBinding).map(IBinding::getJavaElement).orElse(null);
 	}
 
-	private static IBinding getBinding(ASTNode astNode) {
+	public static IBinding getBinding(ASTNode astNode) {
 		if (astNode instanceof Name name) {
 			return name.resolveBinding();
 		}
@@ -96,6 +96,9 @@ public class DOMASTNodeUtils {
 		if (astNode instanceof SuperMethodReference superRef) {
 			return superRef.resolveMethodBinding();
 		}
+		if (astNode instanceof SuperConstructorInvocation superRef) {
+			return superRef.resolveConstructorBinding();
+		}
 		if (astNode instanceof MethodRef methodRef) {
 			return methodRef.resolveBinding();
 		}
@@ -104,6 +107,9 @@ public class DOMASTNodeUtils {
 		}
 		if (astNode instanceof AnnotationTypeMemberDeclaration methodRef) {
 			return methodRef.resolveBinding();
+		}
+		if (astNode instanceof ClassInstanceCreation ref) {
+			return ref.resolveConstructorBinding();
 		}
 		// TODO more...
 		return null;

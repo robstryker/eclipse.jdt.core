@@ -1165,7 +1165,7 @@ public void recordResolution(QualifiedTypeReference typeReference, TypeBinding r
 
 // AST DOM Variants
 
-public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
@@ -1174,66 +1174,66 @@ public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeS
  * If it does, add it to the match set.
  * Returns the match level.
  */
-public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet) { // needed for some generic nodes
+public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet, MatchLocator locator) { // needed for some generic nodes
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.Expression node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.Expression node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.FieldDeclaration node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.FieldDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.LambdaExpression node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.LambdaExpression node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(VariableDeclaration node, MatchingNodeSet nodeSet) {
+public int match(VariableDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.MethodDeclaration node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.MethodDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.MemberValuePair node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.MemberValuePair node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(MethodInvocation node, MatchingNodeSet nodeSet) {
+public int match(MethodInvocation node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-protected int match(org.eclipse.jdt.core.dom.ModuleDeclaration node, MatchingNodeSet nodeSet) {
+protected int match(org.eclipse.jdt.core.dom.ModuleDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	return IMPOSSIBLE_MATCH;
 }
-public int match(Name node, MatchingNodeSet nodeSet) {
+public int match(Name node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(FieldAccess node, MatchingNodeSet nodeSet) {
+public int match(FieldAccess node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(AbstractTypeDeclaration node, MatchingNodeSet nodeSet) {
+public int match(AbstractTypeDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(org.eclipse.jdt.core.dom.TypeParameter node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.TypeParameter node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int match(Type node, MatchingNodeSet nodeSet) {
+public int match(Type node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int resolveLevel(org.eclipse.jdt.core.dom.ASTNode node) {
+public int resolveLevel(org.eclipse.jdt.core.dom.ASTNode node, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }
-public int resolveLevel(IBinding binding) {
+public int resolveLevel(IBinding binding, MatchLocator locator) {
 	// each subtype should override if needed
 	return IMPOSSIBLE_MATCH;
 }

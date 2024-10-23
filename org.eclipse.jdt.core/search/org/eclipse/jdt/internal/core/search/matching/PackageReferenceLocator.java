@@ -93,8 +93,8 @@ public int match(Annotation node, MatchingNodeSet nodeSet) {
 	return match(node.type, nodeSet);
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet) {
-	return match(node.getTypeName(), nodeSet);
+public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet, MatchLocator locator) {
+	return match(node.getTypeName(), nodeSet, locator);
 }
 @Override
 public int match(ASTNode node, MatchingNodeSet nodeSet) { // interested in ImportReference
@@ -103,9 +103,9 @@ public int match(ASTNode node, MatchingNodeSet nodeSet) { // interested in Impor
 	return nodeSet.addMatch(node, matchLevel((ImportReference) node));
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet) { // interested in ImportReference
+public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet, MatchLocator locator) { // interested in ImportReference
 	if (node instanceof ImportDeclaration decl) {
-		return match(decl.getName(), nodeSet);
+		return match(decl.getName(), nodeSet, locator);
 	}
 	return IMPOSSIBLE_MATCH;
 }
@@ -121,7 +121,8 @@ public int match(Reference node, MatchingNodeSet nodeSet) { // interested in Qua
 	return nodeSet.addMatch(node, matchLevelForTokens(((QualifiedNameReference) node).tokens));
 }
 @Override
-public int match(Name node, MatchingNodeSet nodeSet) { // interested in QualifiedNameReference
+public int match(Name node, MatchingNodeSet nodeSet, MatchLocator locator) {
+	// interested in QualifiedNameReference
 	char[][] arr = Arrays.stream(node.getFullyQualifiedName().split("\\.")).map(String::toCharArray).toArray(char[][]::new);//$NON-NLS-1$
 	return nodeSet.addMatch(node, matchLevelForTokens(arr));
 }
@@ -136,9 +137,9 @@ public int match(TypeReference node, MatchingNodeSet nodeSet) { // interested in
 	return nodeSet.addMatch(node, matchLevelForTokens(((QualifiedTypeReference) node).tokens));
 }
 @Override
-public int match(Type node, MatchingNodeSet nodeSet) { // interested in QualifiedTypeReference only
+public int match(Type node, MatchingNodeSet nodeSet, MatchLocator locator) { // interested in QualifiedTypeReference only
 	if( node instanceof ArrayType att) {
-		return match(att.getElementType(), nodeSet);
+		return match(att.getElementType(), nodeSet, locator);
 	}
 	Name typePkg = null;
 	if( node instanceof SimpleType stt) {
@@ -150,7 +151,7 @@ public int match(Type node, MatchingNodeSet nodeSet) { // interested in Qualifie
 	} else if( node instanceof NameQualifiedType qt) {
 		typePkg = qt.getQualifier();
 	}
-	return typePkg != null ? match(typePkg, nodeSet) : IMPOSSIBLE_MATCH;
+	return typePkg != null ? match(typePkg, nodeSet, locator) : IMPOSSIBLE_MATCH;
 }
 
 
@@ -389,7 +390,7 @@ public int resolveLevel(Binding binding) {
 	return IMPOSSIBLE_MATCH;
 }
 @Override
-public int resolveLevel(IBinding binding) {
+public int resolveLevel(IBinding binding, MatchLocator locator) {
 	if( binding instanceof IPackageBinding ipb) {
 		String n = ipb.getName();
 		String patternName = new String(this.pattern.pkgName);

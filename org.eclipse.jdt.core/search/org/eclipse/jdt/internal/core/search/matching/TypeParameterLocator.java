@@ -56,7 +56,7 @@ public class TypeParameterLocator extends PatternLocator {
 		return IMPOSSIBLE_MATCH;
 	}
 	@Override
-	public int match(Type node, MatchingNodeSet nodeSet) {
+	public int match(Type node, MatchingNodeSet nodeSet, MatchLocator locator) {
 		if (this.pattern.findReferences) {
 			if (node instanceof SimpleType simple) { // Type parameter cannot be qualified
 				if (matchesName(this.pattern.name, simple.getName().toString().toCharArray())) {
@@ -187,7 +187,7 @@ public class TypeParameterLocator extends PatternLocator {
 		return matchTypeParameter((TypeVariableBinding) binding, true);
 	}
 	@Override
-	public int resolveLevel(IBinding binding) {
+	public int resolveLevel(IBinding binding, MatchLocator locator) {
 		if (binding == null) return INACCURATE_MATCH;
 		if (!(binding instanceof ITypeBinding)) return IMPOSSIBLE_MATCH;
 

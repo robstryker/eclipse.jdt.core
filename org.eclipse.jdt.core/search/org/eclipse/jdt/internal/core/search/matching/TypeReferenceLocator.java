@@ -83,8 +83,8 @@ public int match(Annotation node, MatchingNodeSet nodeSet) {
 	return match(node.type, nodeSet);
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet) {
-	return match(node.getTypeName(), nodeSet);
+public int match(org.eclipse.jdt.core.dom.Annotation node, MatchingNodeSet nodeSet, MatchLocator locator) {
+	return match(node.getTypeName(), nodeSet, locator);
 }
 @Override
 public int match(ASTNode node, MatchingNodeSet nodeSet) { // interested in ImportReference
@@ -117,7 +117,7 @@ public int match(Reference node, MatchingNodeSet nodeSet) { // interested in Nam
 	return IMPOSSIBLE_MATCH;
 }
 @Override
-public int match(Name name, MatchingNodeSet nodeSet) {
+public int match(Name name, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (name.getParent() instanceof AbstractTypeDeclaration) {
 		return IMPOSSIBLE_MATCH;
 	}
@@ -202,7 +202,7 @@ public int match(TypeReference node, MatchingNodeSet nodeSet) {
 	return IMPOSSIBLE_MATCH;
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (node instanceof EnumConstantDeclaration enumConstantDecl
 		&& node.getParent() instanceof EnumDeclaration enumDeclaration
 		&& enumConstantDecl.getAnonymousClassDeclaration() != null) {
@@ -216,7 +216,7 @@ public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet)
 	return IMPOSSIBLE_MATCH;
 }
 @Override
-public int match(Type node, MatchingNodeSet nodeSet) {
+public int match(Type node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (this.pattern.simpleName == null)
 		return nodeSet.addMatch(node, this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
 
@@ -1002,7 +1002,7 @@ public String toString() {
 	return "Locator for " + this.pattern.toString(); //$NON-NLS-1$
 }
 @Override
-public int resolveLevel(IBinding binding) {
+public int resolveLevel(IBinding binding, MatchLocator locator) {
 	if (binding == null) {
 		return INACCURATE_MATCH;
 	}

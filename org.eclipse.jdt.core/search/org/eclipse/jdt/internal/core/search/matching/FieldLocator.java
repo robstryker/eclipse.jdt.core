@@ -73,7 +73,7 @@ public int match(ASTNode node, MatchingNodeSet nodeSet) {
 	return nodeSet.addMatch(node, declarationsLevel);
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.ASTNode node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	int declarationsLevel = IMPOSSIBLE_MATCH;
 	if (node instanceof EnumConstantDeclaration enumConstant) {
 		return match(enumConstant, nodeSet);
@@ -116,7 +116,7 @@ public int match(FieldDeclaration node, MatchingNodeSet nodeSet) {
 	return nodeSet.addMatch(node, referencesLevel >= declarationsLevel ? referencesLevel : declarationsLevel); // use the stronger match
 }
 @Override
-public int match(VariableDeclaration node, MatchingNodeSet nodeSet) {
+public int match(VariableDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (!this.pattern.findDeclarations) {
 		return IMPOSSIBLE_MATCH;
 	}
@@ -267,7 +267,7 @@ protected void matchReportReference(ASTNode reference, IJavaElement element, Bin
 	matchReportReference(reference, element, null, null, elementBinding, accuracy, locator);
 }
 @Override
-public int match(Name name, MatchingNodeSet nodeSet) {
+public int match(Name name, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (this.pattern.findDeclarations) {
 		return IMPOSSIBLE_MATCH; // already caught by match(VariableDeclaration)
 	}
@@ -494,7 +494,7 @@ public int resolveLevel(Binding binding) {
 	return matchField((FieldBinding) binding, true);
 }
 @Override
-public int resolveLevel(IBinding binding) {
+public int resolveLevel(IBinding binding, MatchLocator locator) {
 	if (binding == null) return INACCURATE_MATCH;
 	if(binding instanceof IVariableBinding variableBinding) {
 		if (variableBinding.isRecordComponent()) {

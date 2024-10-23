@@ -288,7 +288,7 @@ public int match(MethodDeclaration node, MatchingNodeSet nodeSet) {
 	return nodeSet.addMatch(node, resolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.MethodDeclaration node, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.MethodDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	if (!this.pattern.findDeclarations) return IMPOSSIBLE_MATCH;
 
 	// Verify method name
@@ -363,12 +363,12 @@ private int matchReference(SimpleName name, List<?> args, MatchingNodeSet nodeSe
 	return this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH;
 }
 @Override
-public int match(MethodInvocation node, MatchingNodeSet nodeSet) {
+public int match(MethodInvocation node, MatchingNodeSet nodeSet, MatchLocator locator) {
 	int level = matchReference(node.getName(), node.arguments(), nodeSet);
 	return level != IMPOSSIBLE_MATCH ? nodeSet.addMatch(node, level) : level;
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.Expression expression, MatchingNodeSet nodeSet) {
+public int match(org.eclipse.jdt.core.dom.Expression expression, MatchingNodeSet nodeSet, MatchLocator locator) {
 	int level = expression instanceof SuperMethodInvocation node ? matchReference(node.getName(), node.arguments(), nodeSet) :
 		IMPOSSIBLE_MATCH;
 	return level != IMPOSSIBLE_MATCH ? nodeSet.addMatch(expression, level) : level;
@@ -963,7 +963,7 @@ public int resolveLevel(Binding binding) {
 	return (methodLevel & MATCH_LEVEL_MASK) > (declaringLevel & MATCH_LEVEL_MASK) ? declaringLevel : methodLevel; // return the weaker match
 }
 @Override
-public int resolveLevel(IBinding binding) {
+public int resolveLevel(IBinding binding, MatchLocator locator) {
 	if (binding instanceof IMethodBinding method) {
 		boolean skipVerif = this.pattern.findDeclarations && this.mayBeGeneric;
 		int methodLevel = matchMethod(method, skipVerif);

@@ -1368,7 +1368,7 @@ protected void locateMatchesWithASTParser(JavaProject javaProject, PossibleMatch
 		}
 	}, this.progressMonitor); // todo, use a subprogressmonitor or slice it
 	asts.forEach((possibleMatch, ast) -> {
-		ast.accept(new PatternLocatorVisitor(this.patternLocator, possibleMatch.nodeSet));
+		ast.accept(new PatternLocatorVisitor(this.patternLocator, possibleMatch.nodeSet, this));
 	});
 	asts.keySet().forEach(possibleMatch -> {
 		this.currentPossibleMatch = possibleMatch;
@@ -1428,9 +1428,10 @@ private SearchMatch toMatch(org.eclipse.jdt.core.dom.ASTNode node, int accuracy,
 	if (node instanceof Name name) {
 		IBinding b = name.resolveBinding();
 		IJavaElement enclosing = DOMASTNodeUtils.getEnclosingJavaElement(node);
-		if( b == null ) {
-			return new SearchMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), getParticipant(), resource);
-		}
+//		if( b == null ) {
+//			// This fixes some issues but causes even more failures
+//			return new SearchMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), getParticipant(), resource);
+//		}
 		if (b instanceof ITypeBinding) {
 			return new TypeReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), insideDocComment(node), getParticipant(), resource);
 		}
