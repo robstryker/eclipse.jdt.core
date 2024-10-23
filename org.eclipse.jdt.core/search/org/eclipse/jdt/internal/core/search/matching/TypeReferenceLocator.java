@@ -24,6 +24,8 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.BreakStatement;
+import org.eclipse.jdt.core.dom.LabeledStatement;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.SearchMatch;
 import org.eclipse.jdt.core.search.SearchPattern;
@@ -119,12 +121,65 @@ public int match(Name name, MatchingNodeSet nodeSet) {
 	if (name.getParent() instanceof AbstractTypeDeclaration) {
 		return IMPOSSIBLE_MATCH;
 	}
+	if( name.getParent() instanceof LabeledStatement ls && ls.getLabel() == name) {
+		return IMPOSSIBLE_MATCH;
+	}
+	if( name.getParent() instanceof BreakStatement bs && bs.getLabel() == name) {
+		return IMPOSSIBLE_MATCH;
+	}
 	if (this.pattern.simpleName == null) {
 		return nodeSet.addMatch(name, this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
 	}
-	String simpleName = name instanceof SimpleName sname ? sname.getIdentifier() :
-		name instanceof QualifiedName qname ? qname.getName().getIdentifier() :
-		null;
+	if( name instanceof SimpleName sn2 ) {
+		if( this.pattern.qualification == null)
+			return match(sn2, nodeSet);
+		// searching for a qualified name but we are only simple
+		org.eclipse.jdt.core.dom.ASTNode parent3 = name.getParent();
+		if( !(parent3 instanceof QualifiedName)) {
+			return match(sn2, nodeSet);
+		}
+		// Parent is a qualified name and we didn't match it...
+		// so we know the whole name was a failed match, but...
+		if( parent3 instanceof QualifiedName qn3 && qn3.getQualifier() == name) {
+			// Maybe the qualifier is the type we're looking for
+			if( match(sn2, nodeSet) == POSSIBLE_MATCH) {
+				return POSSIBLE_MATCH;
+			}
+		}
+
+		if( this.pattern.getMatchMode() == SearchPattern.R_EXACT_MATCH) {
+			return IMPOSSIBLE_MATCH;
+		}
+		if( match(sn2, nodeSet) == POSSIBLE_MATCH) {
+			return POSSIBLE_MATCH;
+		}
+		return IMPOSSIBLE_MATCH;
+	}
+	if( name instanceof QualifiedName qn2 ) {
+		return match(qn2, nodeSet);
+	}
+	return IMPOSSIBLE_MATCH;
+}
+
+public int match(SimpleName name, MatchingNodeSet nodeSet) {
+	String simpleName = name.getIdentifier();
+	return simpleName != null && matchesName(this.pattern.simpleName, simpleName.toCharArray()) ?
+		POSSIBLE_MATCH : IMPOSSIBLE_MATCH;
+}
+public int match(QualifiedName name, MatchingNodeSet nodeSet) {
+	String simpleName = name.getName().getIdentifier();
+	String qualifier = name.getQualifier().toString();
+	if( this.pattern.qualification == null ) {
+		// Return an impossible match here, because we are not seeking a qualifier.
+		// The SimpleName node should be the one to respond.
+		return IMPOSSIBLE_MATCH;
+	}
+	if( qualifier != null) {
+		String desiredQualifier = new String(this.pattern.qualification);
+		if( !qualifier.equals(desiredQualifier)) {
+			return IMPOSSIBLE_MATCH;
+		}
+	}
 	return simpleName != null && matchesName(this.pattern.simpleName, simpleName.toCharArray()) ?
 		POSSIBLE_MATCH : IMPOSSIBLE_MATCH;
 }

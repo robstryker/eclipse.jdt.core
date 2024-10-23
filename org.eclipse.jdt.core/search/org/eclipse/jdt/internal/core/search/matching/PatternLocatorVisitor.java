@@ -193,7 +193,8 @@ class PatternLocatorVisitor extends ASTVisitor {
 		}
 		int level = this.patternLocator.match(node, this.nodeSet);
 		if ((level & PatternLocator.MATCH_LEVEL_MASK) == PatternLocator.POSSIBLE_MATCH && (this.nodeSet.mustResolve || this.patternLocator.mustResolve)) {
-			level = this.patternLocator.resolveLevel(node.resolveBinding());
+			IBinding b = node.resolveBinding();
+			level = this.patternLocator.resolveLevel(b);
 		}
 		this.nodeSet.addMatch(node, level);
 		return level == 0;

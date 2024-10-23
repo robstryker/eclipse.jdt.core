@@ -973,10 +973,12 @@ protected int resolveLevelForType(char[] qualifiedPattern, ITypeBinding type) {
 		return prev;
 	}
 	// NOTE: if case insensitive search then qualifiedPattern is assumed to be lowercase
-
-	return CharOperation.match(qualifiedPattern, type.getQualifiedName().toCharArray(), this.isCaseSensitive)
-		? ACCURATE_MATCH
-		: IMPOSSIBLE_MATCH;
+	char[] qualifiedNameFromBinding = type.getQualifiedName().toCharArray();
+	if( qualifiedNameFromBinding == null || qualifiedNameFromBinding.length == 0 ) {
+		qualifiedNameFromBinding = type.getName().toCharArray();
+	}
+	boolean match1 = CharOperation.match(qualifiedPattern, qualifiedNameFromBinding, this.isCaseSensitive);
+	return match1 ? ACCURATE_MATCH : IMPOSSIBLE_MATCH;
 }
 /* (non-Javadoc)
  * Resolve level for type with a given binding with all pattern information.

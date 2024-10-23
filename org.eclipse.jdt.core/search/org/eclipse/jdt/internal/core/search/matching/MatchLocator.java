@@ -1400,7 +1400,8 @@ private SearchMatch toMatch(org.eclipse.jdt.core.dom.ASTNode node, int accuracy,
 		}
 	}
 	if (node instanceof MethodInvocation method) {
-		return new MethodReferenceMatch(DOMASTNodeUtils.getEnclosingJavaElement(node.getParent()), accuracy, method.getName().getStartPosition(), method.getStartPosition() + method.getLength() - method.getName().getStartPosition(), false, method.resolveMethodBinding().isSynthetic(), false, insideDocComment(node), getParticipant(), resource);
+		IJavaElement enclosing = DOMASTNodeUtils.getEnclosingJavaElement(node.getParent());
+		return new MethodReferenceMatch(enclosing, accuracy, method.getName().getStartPosition(), method.getStartPosition() + method.getLength() - method.getName().getStartPosition(), false, method.resolveMethodBinding().isSynthetic(), false, insideDocComment(node), getParticipant(), resource);
 	}
 	if (node instanceof SuperMethodInvocation method) {
 		return new MethodReferenceMatch(DOMASTNodeUtils.getEnclosingJavaElement(node.getParent()), accuracy, method.getName().getStartPosition(), method.getStartPosition() + method.getLength() - method.getName().getStartPosition(), false, method.resolveMethodBinding().isSynthetic(), true, insideDocComment(node), getParticipant(), resource);
@@ -1427,17 +1428,20 @@ private SearchMatch toMatch(org.eclipse.jdt.core.dom.ASTNode node, int accuracy,
 	if (node instanceof Name name) {
 		IBinding b = name.resolveBinding();
 		IJavaElement enclosing = DOMASTNodeUtils.getEnclosingJavaElement(node);
+		if( b == null ) {
+			return new SearchMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), getParticipant(), resource);
+		}
 		if (b instanceof ITypeBinding) {
 			return new TypeReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), insideDocComment(node), getParticipant(), resource);
 		}
 		if (b instanceof IVariableBinding variable) {
 			if (variable.isField()) {
-				return new FieldReferenceMatch(DOMASTNodeUtils.getEnclosingJavaElement(node), accuracy, node.getStartPosition(), node.getLength(), true, true, insideDocComment(node), getParticipant(), resource);
+				return new FieldReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), true, true, insideDocComment(node), getParticipant(), resource);
 			}
-			return new LocalVariableReferenceMatch(DOMASTNodeUtils.getEnclosingJavaElement(node), accuracy, node.getStartPosition(), node.getLength(), true, true, insideDocComment(node), getParticipant(), resource);
+			return new LocalVariableReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), true, true, insideDocComment(node), getParticipant(), resource);
 		}
 		if (b instanceof IPackageBinding) {
-			return new PackageReferenceMatch(DOMASTNodeUtils.getEnclosingJavaElement(name), accuracy, name.getStartPosition(), name.getLength(), insideDocComment(name), getParticipant(), resource);
+			return new PackageReferenceMatch(enclosing, accuracy, name.getStartPosition(), name.getLength(), insideDocComment(name), getParticipant(), resource);
 		}
 		// more...?
 	}

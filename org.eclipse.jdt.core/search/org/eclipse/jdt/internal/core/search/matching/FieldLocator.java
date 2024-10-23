@@ -17,7 +17,10 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
@@ -29,28 +32,9 @@ import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.search.FieldDeclarationMatch;
 import org.eclipse.jdt.core.search.SearchMatch;
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.AbstractVariableDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.CompactConstructorDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.FieldReference;
-import org.eclipse.jdt.internal.compiler.ast.ImportReference;
-import org.eclipse.jdt.internal.compiler.ast.NameReference;
-import org.eclipse.jdt.internal.compiler.ast.QualifiedNameReference;
-import org.eclipse.jdt.internal.compiler.ast.Reference;
-import org.eclipse.jdt.internal.compiler.ast.SingleNameReference;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
-import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
-import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
-import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedFieldBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.core.JavaElement;
 
@@ -287,11 +271,42 @@ public int match(Name name, MatchingNodeSet nodeSet) {
 	if (this.pattern.findDeclarations) {
 		return IMPOSSIBLE_MATCH; // already caught by match(VariableDeclaration)
 	}
+
 	if (matchesName(this.pattern.name, name.toString().toCharArray())) {
+		if( this.pattern instanceof DeclarationOfAccessedFieldsPattern doafp) {
+			if( doafp.enclosingElement != null ) {
+				// we have an enclosing element to check
+				if( !isWithinRange(name, doafp.enclosingElement) ) {
+					return IMPOSSIBLE_MATCH;
+				}
+				// We need to report the declaration, not the usage
+				// TODO testDeclarationOfAccessedFields2
+//				IBinding b = name.resolveBinding();
+			}
+		}
 		return nodeSet.addMatch(name, this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
 	}
 	return IMPOSSIBLE_MATCH;
 }
+
+public boolean isWithinRange(org.eclipse.jdt.core.dom.ASTNode node, IJavaElement el) {
+	if( el instanceof ISourceReference isr) {
+		try {
+			ISourceRange r = isr.getSourceRange();
+			if( r != null ) {
+				int astStart = node.getStartPosition();
+				int astLen = node.getLength();
+				int rangeStart = r.getOffset();
+				int rangeLen = r.getLength();
+				return astStart >= rangeStart && (astStart + astLen) <= (rangeStart + rangeLen);
+			}
+		} catch(JavaModelException jme) {
+			// Ignore
+		}
+	}
+	return false;
+}
+
 @Override
 protected void matchReportReference(ASTNode reference, IJavaElement element, IJavaElement localElement, IJavaElement[] otherElements,Binding elementBinding, int accuracy, MatchLocator locator) throws CoreException {
 	if (this.isDeclarationOfAccessedFieldsPattern) {
