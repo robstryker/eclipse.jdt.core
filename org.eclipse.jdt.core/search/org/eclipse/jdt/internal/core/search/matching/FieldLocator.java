@@ -32,6 +32,7 @@ import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.search.FieldDeclarationMatch;
 import org.eclipse.jdt.core.search.SearchMatch;
+import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.compiler.lookup.*;
@@ -223,6 +224,10 @@ protected int matchField(IVariableBinding field, boolean matchName) {
 			return fieldPattern.declaringQualification == null && fieldPattern.declaringSimpleName == null
 				? ACCURATE_MATCH
 				: IMPOSSIBLE_MATCH;
+		int mode = fieldPattern.getMatchMode();
+		if(mode == SearchPattern.R_EXACT_MATCH) {
+			return IMPOSSIBLE_MATCH;
+		}
 		return INACCURATE_MATCH;
 	}
 
