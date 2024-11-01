@@ -320,6 +320,11 @@ public CompilationUnit cloneCachingContents() {
 		public CompilationUnit originalFromClone() {
 			return CompilationUnit.this;
 		}
+		@Override
+		public char[] getFileName(){
+			return originalFromClone().getFileName();
+		}
+
 	};
 }
 
