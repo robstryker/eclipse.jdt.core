@@ -1452,7 +1452,6 @@ protected void locateMatchesWithASTParser(JavaProject javaProject, PossibleMatch
 		// todo, use a subprogressmonitor or slice it
 	}, this.progressMonitor);
 
-	Collections.sort(nonNullDomIndexes);
 	for( int x : nonNullDomIndexes ) {
 		PossibleMatch possibleMatch = possibleMatches[x];
 		this.currentPossibleMatch = possibleMatch;
@@ -1513,19 +1512,12 @@ private SearchMatch toMatch(org.eclipse.jdt.core.dom.ASTNode node, int accuracy,
 		return new FieldDeclarationMatch(DOMASTNodeUtils.getDeclaringJavaElement(node), accuracy,
 				start, len, getParticipant(), resource);
 	}
-	if (node instanceof Type nt) {
-		IBinding b = DOMASTNodeUtils.getBinding(nt);
+	if (node instanceof Type) {
 		IJavaElement element = DOMASTNodeUtils.getEnclosingJavaElement(node);
 		if (element instanceof LocalVariable) {
 			element = element.getParent();
 		}
-		TypeReferenceMatch ret = new TypeReferenceMatch(element, accuracy, node.getStartPosition(), node.getLength(), DOMASTNodeUtils.insideDocComment(node), getParticipant(), resource);
-		if( nt.isParameterizedType() ) {
-			if(((ParameterizedType)nt).typeArguments().size() == 0 ) {
-				ret.setRaw(true);
-			}
-		}
-		return ret;
+		return new TypeReferenceMatch(element, accuracy, node.getStartPosition(), node.getLength(), DOMASTNodeUtils.insideDocComment(node), getParticipant(), resource);
 	}
 	if (node instanceof org.eclipse.jdt.core.dom.TypeParameter nodeTP) {
 		IJavaElement element = DOMASTNodeUtils.getEnclosingJavaElement(node);
@@ -1538,11 +1530,8 @@ private SearchMatch toMatch(org.eclipse.jdt.core.dom.ASTNode node, int accuracy,
 //			// This fixes some issues but causes even more failures
 //			return new SearchMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), getParticipant(), resource);
 //		}
-		if (b instanceof ITypeBinding btb) {
-			TypeReferenceMatch ref = new TypeReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), insideDocComment(node), getParticipant(), resource);
-			if(btb.isRawType())
-				ref.setRaw(true);
-			return ref;
+		if (b instanceof ITypeBinding) {
+			return new TypeReferenceMatch(enclosing, accuracy, node.getStartPosition(), node.getLength(), insideDocComment(node), getParticipant(), resource);
 		}
 		if (b instanceof IVariableBinding variable) {
 			if (variable.isField()) {
