@@ -358,8 +358,7 @@ public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 					IBinaryType binaryType = answer.getBinaryType();
 					if (binaryType != null) {
 						BinaryTypeBinding binding = lu.cacheBinaryType(binaryType, null);
-						if( binding != null ) 
-							requestor.acceptBinding(bindingKey, new TypeBinding(bindingResolver, binding));
+						requestor.acceptBinding(bindingKey, new TypeBinding(bindingResolver, binding));
 					}
 				}
 			}
