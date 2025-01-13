@@ -161,6 +161,7 @@ class JavacConverter {
 		this.buildJavadoc = buildJavadoc;
 		this.focalPoint = -1;
 	}
+
 	public JavacConverter(AST ast, JCCompilationUnit javacCompilationUnit, 
 			Context context, String rawText, boolean buildJavadoc, int focalPoint) {
 		this(ast, javacCompilationUnit, context, rawText, buildJavadoc);
@@ -2009,25 +2010,9 @@ class JavacConverter {
 
 		// Handle errors or default situation
 		if (javac instanceof JCErroneous error) {
-			int pos = javac.getPreferredPosition();
-			char c = this.rawText.length() > pos ? this.rawText.charAt(pos) : 0;
-			if (error.getErrorTrees().isEmpty() && c == '"') {
-				  int newLine = this.rawText.indexOf('\n', pos);
-				  int lineEnd = newLine == -1 ? this.rawText.length() - 1 : newLine;
-				  String litText = this.rawText.substring(pos+1, lineEnd);
-				  Expression res = convertStringToLiteral(litText, pos, lineEnd, null);
-				  res.setSourceRange(pos,  lineEnd - pos);
-				  return res;
-				}
-			if (error.getErrorTrees().size() == 1) {
-				JCTree tree = error.getErrorTrees().get(0);
-				if (tree instanceof JCExpression nestedExpr) {
-					try {
-						return convertExpression(nestedExpr);
-					} catch (Exception ex) {
-						// pass-through: do not break when attempting such reconcile
-					}
-				}
+			Expression e = convertErroneousExpression(error);
+			if( e != null ) {
+				return e;
 			}
 		}
 		if( shouldRecoverWithSimpleName(javac)) {
@@ -2035,6 +2020,20 @@ class JavacConverter {
 			res.setFlags(ASTNode.RECOVERED);
 			commonSettings(res, javac);
 			return res;
+		}
+		return null;
+	}
+	
+	protected Expression convertErroneousExpression(JCErroneous error) {
+		if (error.getErrorTrees().size() == 1) {
+			JCTree tree = error.getErrorTrees().get(0);
+			if (tree instanceof JCExpression nestedExpr) {
+				try {
+					return convertExpression(nestedExpr);
+				} catch (Exception ex) {
+					// pass-through: do not break when attempting such reconcile
+				}
+			}
 		}
 		return null;
 	}
@@ -2297,7 +2296,7 @@ class JavacConverter {
 		throw new UnsupportedOperationException("Not supported yet " + literal + "\n of type" + literal.getClass().getName());
 	}
 
-	private Expression convertStringToLiteral(String string, int pos, int endPos, JCLiteral literal) {
+	protected Expression convertStringToLiteral(String string, int pos, int endPos, JCLiteral literal) {
 		boolean malformed = false;
 		if (this.rawText.charAt(pos) == '"'
 				&& this.rawText.charAt(pos + 1) == '"'

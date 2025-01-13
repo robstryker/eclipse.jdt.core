@@ -283,7 +283,7 @@ public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 			var compiler = ToolProvider.getSystemJavaCompiler();
 			var context = new Context();
 			JavacTask task = (JavacTask) compiler.getTask(null, null, null, List.of(), List.of(), List.of());
-			bindingResolver = new JavacBindingResolver(null, task, context, new JavacConverter(null, null, context, null, true, -1), null, null);
+			bindingResolver = new JavacBindingResolver(null, task, context, createJavacConverter(opts.getMap(), null, null, context, null, true, -1), null, null);
 		}
 
 		for (CompilationUnit cu : units) {
@@ -744,7 +744,7 @@ public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 					}
 					CompilationUnit res = result.get(sourceUnits[i]);
 					AST ast = res.ast;
-					JavacConverter converter = new JavacConverter(ast, javacCompilationUnit, context, rawText, docEnabled, focalPoint);
+					JavacConverter converter = createJavacConverter(compilerOptions, ast, javacCompilationUnit, context, rawText, docEnabled, focalPoint);
 					converter.populateCompilationUnit(res, javacCompilationUnit);
 					// javadoc problems explicitly set as they're not sent to DiagnosticListener (maybe find a flag to do it?)
 					var javadocProblems = converter.javadocDiagnostics.stream()
@@ -849,7 +849,17 @@ public class JavacCompilationUnitResolver implements ICompilationUnitResolver {
 
 		return result;
 	}
-
+	
+	private JavacConverter createJavacConverter(Map<String, String> compilerOptions, AST ast, JCCompilationUnit javacCompilationUnit, 
+			Context context, String rawText, boolean docEnabled, int focalPoint) {
+		String v = compilerOptions.get(org.eclipse.jdt.internal.core.CompilationUnit.COMPILER_COMPLETION_PARSER_ATTR);
+		if( "true".equals(v)) {
+			return new JavacCompletionConverter(ast, javacCompilationUnit, context, rawText, docEnabled, focalPoint);
+		} else {
+			return new JavacConverter(ast, javacCompilationUnit, context, rawText, docEnabled, focalPoint);
+		}
+	}
+	
 	/// cleans up context after analysis (nothing left to process)
 	/// but remain it usable by bindings by keeping filemanager available.
 	public static void cleanup(Context context) {

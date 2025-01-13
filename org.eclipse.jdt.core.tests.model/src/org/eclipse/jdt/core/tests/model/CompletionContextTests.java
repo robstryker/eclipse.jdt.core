@@ -3374,6 +3374,8 @@ public void test0122() throws JavaModelException {
 		"completion token location=UNKNOWN",
 		result.context);
 }
+
+// TODO The dom tree has an added node called CompletionOnStringLiteral that the regular tree doesn't have.
 public void test0123() throws JavaModelException {
 	this.workingCopies = new ICompilationUnit[1];
 	this.workingCopies[0] = getWorkingCopy(

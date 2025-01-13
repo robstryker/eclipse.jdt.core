@@ -71,6 +71,7 @@ import org.eclipse.text.edits.UndoEdit;
 public class CompilationUnit extends Openable implements ICompilationUnit, org.eclipse.jdt.internal.compiler.env.ICompilationUnit, SuffixConstants {
 	public static boolean DOM_BASED_OPERATIONS = Boolean.getBoolean(CompilationUnit.class.getSimpleName() + ".DOM_BASED_OPERATIONS"); //$NON-NLS-1$
 	public static boolean DOM_BASED_COMPLETION = Boolean.getBoolean(CompilationUnit.class.getSimpleName() + ".codeComplete.DOM_BASED_OPERATIONS"); //$NON-NLS-1$
+	public static String COMPILER_COMPLETION_PARSER_ATTR = JavaCore.PLUGIN_ID + ".compiler.completion.parser.enablement"; //$NON-NLS-1$
 
 	/**
 	 * Internal synonym for deprecated constant AST.JSL2
@@ -458,7 +459,7 @@ public void codeComplete(int offset, CompletionRequestor requestor, WorkingCopyO
 @Override
 public void codeComplete(int offset, CompletionRequestor requestor, WorkingCopyOwner workingCopyOwner, IProgressMonitor monitor) throws JavaModelException {
 	if (DOM_BASED_COMPLETION) {
-		new DOMCompletionEngine(offset, getOrBuildAST(workingCopyOwner, offset), this, workingCopyOwner, requestor, monitor).run();
+		new DOMCompletionEngine(offset, getOrBuildCompletionAST(workingCopyOwner, offset), this, workingCopyOwner, requestor, monitor).run();
 		return;
 	}
 	codeComplete(
@@ -490,11 +491,20 @@ public IJavaElement[] codeSelect(int offset, int length, WorkingCopyOwner workin
 	}
 }
 
+public org.eclipse.jdt.core.dom.CompilationUnit getOrBuildCompletionAST(WorkingCopyOwner workingCopyOwner, int focalPosition) throws JavaModelException {
+	return getOrBuildAST(workingCopyOwner, focalPosition, Map.of(COMPILER_COMPLETION_PARSER_ATTR, Boolean.TRUE.toString()));
+}
+
 public org.eclipse.jdt.core.dom.CompilationUnit getOrBuildAST(WorkingCopyOwner workingCopyOwner, int focalPosition) throws JavaModelException {
+	return getOrBuildAST(workingCopyOwner, focalPosition, Collections.EMPTY_MAP);
+}
+
+private org.eclipse.jdt.core.dom.CompilationUnit getOrBuildAST(WorkingCopyOwner workingCopyOwner, int focalPosition, Map<String,String> additionalCompilerOptions) throws JavaModelException {
 	if (this.ast != null) {
 		return this.ast;
 	}
 	Map<String, String> options = getOptions(true);
+	options.putAll(additionalCompilerOptions);
 	ASTParser parser = ASTParser.newParser(new AST(options).apiLevel()); // go through AST constructor to convert options to apiLevel
 	// but we should probably instead just use the latest Java version
 	// supported by the compiler
