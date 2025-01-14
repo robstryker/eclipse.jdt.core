@@ -14,6 +14,7 @@
 package org.eclipse.jdt.internal.codeassist;
 
 import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ISignatureProvider;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
@@ -188,8 +189,15 @@ class DOMCompletionEngineBuilder {
 		}
 	}
 
+	static String getSignatureAsString(ITypeBinding typeBinding) {
+		if( typeBinding instanceof ISignatureProvider isp) {
+			return isp.getSignature();
+		}
+		return typeBinding.getKey().replace('/', '.');
+	}
+
 	static char[] getSignature(ITypeBinding typeBinding) {
-		return typeBinding.getKey().replace('/', '.').toCharArray();
+		return getSignatureAsString(typeBinding).toCharArray();
 	}
 
 }

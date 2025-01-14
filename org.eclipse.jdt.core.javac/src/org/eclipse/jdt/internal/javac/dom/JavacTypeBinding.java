@@ -49,14 +49,15 @@ import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IModuleBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
+import org.eclipse.jdt.core.dom.ISignatureProvider;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.JavacBindingResolver;
+import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
 import org.eclipse.jdt.internal.compiler.codegen.ConstantPool;
 import org.eclipse.jdt.internal.core.BinaryType;
 import org.eclipse.jdt.internal.core.JavaElement;
@@ -67,12 +68,9 @@ import org.eclipse.jdt.internal.core.SourceType;
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Kinds;
-import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Type;
-import com.sun.tools.javac.code.TypeTag;
-import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.code.Kinds.Kind;
 import com.sun.tools.javac.code.Kinds.KindSelector;
+import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.CompletionFailure;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
@@ -81,6 +79,7 @@ import com.sun.tools.javac.code.Symbol.RootPackageSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
+import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Type.ArrayType;
 import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.ErrorType;
@@ -90,11 +89,13 @@ import com.sun.tools.javac.code.Type.JCVoidType;
 import com.sun.tools.javac.code.Type.MethodType;
 import com.sun.tools.javac.code.Type.TypeVar;
 import com.sun.tools.javac.code.Type.WildcardType;
+import com.sun.tools.javac.code.TypeTag;
+import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.code.Types.FunctionDescriptorLookupError;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
-public abstract class JavacTypeBinding implements ITypeBinding {
+public abstract class JavacTypeBinding implements ITypeBinding, ISignatureProvider {
 
 	private static final ITypeBinding[] NO_TYPE_ARGUMENTS = new ITypeBinding[0];
 
@@ -313,6 +314,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		return key.endsWith(";") ? key.substring(0, key.length() - 1) : key;
 	}
 
+	public String getSignature() {
+		return getKey(true, true);
+	}
+	
 	private String getKey(Type t) {
 		return getKey(t, this.typeSymbol.flatName());
 	}
@@ -321,13 +326,21 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		return getKey(this.type, this.typeSymbol.flatName(), includeTypeParameters);
 	}
 
+	public String getKey(boolean includeTypeParameters, boolean ignoreFilenames) {
+		return getKey(this.type, this.typeSymbol.flatName(), includeTypeParameters, ignoreFilenames);
+	}
+
 	public String getKey(Type t, Name n) {
 		return getKey(type, n, true);
 	}
+	
 	public String getKey(Type t, Name n, boolean includeTypeParameters) {
+		return getKey(t, n, includeTypeParameters, false);
+	}
+	public String getKey(Type t, Name n, boolean includeTypeParameters, boolean signatureMode) {
 		try {
 			StringBuilder builder = new StringBuilder();
-			getKey(builder, t, n, false, includeTypeParameters, this.resolver);
+			getKey(builder, t, n, false, includeTypeParameters, signatureMode, this.resolver);
 			return builder.toString();
 		} catch(BindingKeyException bke) {
 			return null;
@@ -344,6 +357,10 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 	}
 
 	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean includeParameters, JavacBindingResolver resolver) throws BindingKeyException {
+		getKey(builder, typeToBuild, n, isLeaf, includeParameters, false, resolver);
+	}
+	
+	static void getKey(StringBuilder builder, Type typeToBuild, Name n, boolean isLeaf, boolean includeParameters, boolean signatureMode, JavacBindingResolver resolver) throws BindingKeyException {
 		if (typeToBuild instanceof Type.JCNoType) {
 			return;
 		}
@@ -390,7 +407,11 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			 * but the test suite expects test0502.A$182,
 			 * where 182 is the location in the source of the symbol.
 			 */
-			builder.append(n.toString().replace('.', '/'));
+			if( signatureMode ) {
+				builder.append(n.toString());
+			} else {
+				builder.append(n.toString().replace('.', '/'));
+			}
 			// This is a hack and will likely need to be enhanced
 			if (typeToBuild.tsym instanceof ClassSymbol classSymbol && !(classSymbol.type instanceof ErrorType) && classSymbol.owner instanceof PackageSymbol) {
 				JavaFileObject sourcefile = classSymbol.sourcefile;
@@ -402,7 +423,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 					} catch (IllegalArgumentException e) {
 						// probably: uri is not a valid path
 					}
-					if (fileName != null && !fileName.startsWith(classSymbol.getSimpleName().toString())) {
+					if (fileName != null && !signatureMode && !fileName.startsWith(classSymbol.getSimpleName().toString())) {
 						// There are multiple top-level types in this file,
 						// inject 'FileName~' before the type name to show that this type came from `FileName.java`
 						// (eg. Lorg/eclipse/jdt/FileName~MyTopLevelType;)

@@ -200,9 +200,7 @@ class DOMCompletionContext extends CompletionContext {
 			return null;
 		}
 		var res = this.expectedTypes.getExpectedTypes().stream() //
-				.map(type -> type.getKey()) //
-				.map(name -> name.replace('/', '.'))
-				.map(String::toCharArray) //
+				.map(type -> DOMCompletionEngineBuilder.getSignature(type)) //
 				.toArray(char[][]::new);
 		return res.length == 0 ? null : res;
 	}

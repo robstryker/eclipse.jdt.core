@@ -21,6 +21,7 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.internal.codeassist.impl.Engine;
 import org.eclipse.jdt.internal.compiler.ast.StringLiteral;
 import org.eclipse.jdt.internal.compiler.ast.Wildcard;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
@@ -35,7 +36,7 @@ import org.eclipse.jdt.internal.core.PackageFragment;
 /**
  * Internal implementation of type bindings.
  */
-class TypeBinding implements ITypeBinding {
+class TypeBinding implements ITypeBinding, ISignatureProvider {
 	private static final StringLiteral EXPRESSION = new org.eclipse.jdt.internal.compiler.ast.StringLiteral(0,0);
 
 	protected static final IMethodBinding[] NO_METHOD_BINDINGS = new IMethodBinding[0];
@@ -569,6 +570,11 @@ class TypeBinding implements ITypeBinding {
 					defaultBindingResolver.getBindingsToNodesMap());
 		}
 		return null;
+	}
+
+	@Override
+	public String getSignature() {
+		return new String(Engine.getSignature(this.binding));
 	}
 
 	@Override
