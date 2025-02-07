@@ -20,10 +20,7 @@ import static org.eclipse.jdt.internal.core.JavaModelManager.trace;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.Flags;
@@ -34,15 +31,6 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.search.MethodDeclarationMatch;
 import org.eclipse.jdt.core.search.MethodReferenceMatch;
 import org.eclipse.jdt.core.search.SearchMatch;
@@ -128,29 +116,6 @@ private MethodBinding getMethodBinding(ReferenceBinding type, char[] methodName,
 		}
 	}
 	return null;
-}
-private IMethodBinding getDOMASTMethodBinding(ITypeBinding type, String methodName, ITypeBinding[] argumentTypes) {
-	return Stream.of(type.getDeclaredMethods())
-		.filter(method -> Objects.equals(method.getName(), methodName))
-		.filter(method -> compatibleByErasure(method.getParameterTypes(), argumentTypes))
-		.findAny()
-		.orElse(null);
-}
-// can be replaced with `Arrays.equals(method.getParameterTypes(), argumentTypes, Comparator.comparing(ITypeBinding::getErasure))`
-// but JDT bugs
-private static boolean compatibleByErasure(ITypeBinding[] one, ITypeBinding[] other) {
-	if (Objects.equals(one, other)) {
-		return true;
-	}
-	if (one == null || other == null || one.length != other.length) {
-		return false;
-	}
-	for (int i = 0; i < one.length; i++) {
-		if (!Objects.equals(one[i].getErasure(), other[i].getErasure())) {
-			return false;
-		}
-	}
-	return true;
 }
 
 @Override
@@ -290,48 +255,6 @@ public int match(MethodDeclaration node, MatchingNodeSet nodeSet) {
 	return nodeSet.addMatch(node, resolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
 }
 @Override
-public int match(org.eclipse.jdt.core.dom.MethodDeclaration node, MatchingNodeSet nodeSet, MatchLocator locator) {
-	if (!this.pattern.findDeclarations) return IMPOSSIBLE_MATCH;
-
-	// Verify method name
-	if (!matchesName(this.pattern.selector, node.getName().getIdentifier().toCharArray())) return IMPOSSIBLE_MATCH;
-
-	// Verify parameters types
-	boolean resolve = this.pattern.mustResolve;
-	if (this.pattern.parameterSimpleNames != null) {
-		int length = this.pattern.parameterSimpleNames.length;
-		List<SingleVariableDeclaration> args = node.parameters();
-		int argsLength = args == null ? 0 : args.size();
-		if (length != argsLength) return IMPOSSIBLE_MATCH;
-		for (int i = 0; i < argsLength; i++) {
-			var arg = args.get(i);
-			if (!matchesTypeReference(this.pattern.parameterSimpleNames[i], arg.getType(), arg.isVarargs())) {
-				// Do not return as impossible when source level is at least 1.5
-				if (this.mayBeGeneric) {
-					if (!this.pattern.mustResolve) {
-						// Set resolution flag on node set in case of types was inferred in parameterized types from generic ones...
-					 	// (see  bugs https://bugs.eclipse.org/bugs/show_bug.cgi?id=79990, 96761, 96763)
-						nodeSet.mustResolve = true;
-						resolve = true;
-					}
-			//		this.methodDeclarationsWithInvalidParam.put(node, null);
-				} else {
-					return IMPOSSIBLE_MATCH;
-				}
-			}
-		}
-	}
-
-	// Verify type arguments (do not reject if pattern has no argument as it can be an erasure match)
-	if (this.pattern.hasMethodArguments()) {
-		if (node.typeParameters() == null || node.typeParameters().size() != this.pattern.methodArguments.length)
-			return IMPOSSIBLE_MATCH;
-	}
-
-	// Method declaration may match pattern
-	return nodeSet.addMatch(node, resolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
-}
-@Override
 public int match(MemberValuePair node, MatchingNodeSet nodeSet) {
 	if (!this.pattern.findReferences) return IMPOSSIBLE_MATCH;
 
@@ -352,28 +275,6 @@ public int match(MessageSend node, MatchingNodeSet nodeSet) {
 	}
 
 	return nodeSet.addMatch(node, this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH);
-}
-private int matchReference(SimpleName name, List<?> args, MatchingNodeSet nodeSet) {
-	if (!this.pattern.findReferences) return IMPOSSIBLE_MATCH;
-
-	if (!matchesName(this.pattern.selector, name.getIdentifier().toCharArray())) return IMPOSSIBLE_MATCH;
-	if (this.pattern.parameterSimpleNames != null && (!this.pattern.varargs || DOMASTNodeUtils.insideDocComment(name))) {
-		int length = this.pattern.parameterSimpleNames.length;
-		int argsLength = args == null ? 0 : args.size();
-		if (length != argsLength) return IMPOSSIBLE_MATCH;
-	}
-	return this.pattern.mustResolve ? POSSIBLE_MATCH : ACCURATE_MATCH;
-}
-@Override
-public int match(MethodInvocation node, MatchingNodeSet nodeSet, MatchLocator locator) {
-	int level = matchReference(node.getName(), node.arguments(), nodeSet);
-	return level != IMPOSSIBLE_MATCH ? nodeSet.addMatch(node, level) : level;
-}
-@Override
-public int match(org.eclipse.jdt.core.dom.Expression expression, MatchingNodeSet nodeSet, MatchLocator locator) {
-	int level = expression instanceof SuperMethodInvocation node ? matchReference(node.getName(), node.arguments(), nodeSet) :
-		IMPOSSIBLE_MATCH;
-	return level != IMPOSSIBLE_MATCH ? nodeSet.addMatch(expression, level) : level;
 }
 
 @Override
@@ -512,108 +413,6 @@ protected int matchMethod(MethodBinding method, boolean skipImpossibleArg) {
 
 	return level;
 }
-
-@Override
-public int match(Name node, MatchingNodeSet nodeSet, MatchLocator locator) {
-	String name = node.toString();
-	String[] segments = name.split("\\."); //$NON-NLS-1$
-	String lastSegment = segments == null || segments.length == 0 ? null : segments[segments.length-1];
-	boolean matchesLastSegment = this.pattern.selector == null ? true :
-		matchesName(this.pattern.selector, (lastSegment == null ? "" : lastSegment).toCharArray()); //$NON-NLS-1$
-	boolean matchesPrefix = this.pattern.declaringPackageName == null ? true :
-		name.startsWith(new String(this.pattern.declaringPackageName));
-	return matchesLastSegment && matchesPrefix ? POSSIBLE_MATCH : IMPOSSIBLE_MATCH;
-}
-
-
-protected int matchMethod(IMethodBinding method, boolean skipImpossibleArg) {
-	if (!matchesName(this.pattern.selector, method.getName().toCharArray())) return IMPOSSIBLE_MATCH;
-
-	int level = ACCURATE_MATCH;
-	// look at return type only if declaring type is not specified
-	if (this.pattern.declaringSimpleName == null) {
-		// TODO (frederic) use this call to refine accuracy on return type
-		// int newLevel = resolveLevelForType(this.pattern.returnSimpleName, this.pattern.returnQualification, this.pattern.returnTypeArguments, 0, method.returnType);
-		int newLevel = resolveLevelForType(this.pattern.returnSimpleName, this.pattern.returnQualification, method.getReturnType());
-		if (level > newLevel) {
-			if (newLevel == IMPOSSIBLE_MATCH) return IMPOSSIBLE_MATCH;
-			level = newLevel; // can only be downgraded
-		}
-	}
-
-	// parameter types
-	int parameterCount = this.pattern.parameterSimpleNames == null ? -1 : this.pattern.parameterSimpleNames.length;
-	if (parameterCount > -1) {
-		// global verification
-		if (method.getParameterTypes() == null) return INACCURATE_MATCH;
-		if (parameterCount != method.getParameterTypes().length) return IMPOSSIBLE_MATCH;
-		if (method.isRecovered()) {
-			// return inaccurate match for ambiguous call (bug 80890)
-			return INACCURATE_MATCH;
-		}
-		boolean foundTypeVariable = false;
-		IMethodBinding focusMethodBinding = null;
-		boolean checkedFocus = false;
-		boolean isBinary = this.pattern!= null && this.pattern.focus instanceof BinaryMethod;
-		// verify each parameter
-		for (int i = 0; i < parameterCount; i++) {
-			ITypeBinding argType = method.getParameterTypes()[i];
-			int newLevel = IMPOSSIBLE_MATCH;
-			boolean foundLevel = false;
-			if (argType.isMember() || this.pattern.parameterQualifications[i] != null) {
-				if (!checkedFocus) {
-					focusMethodBinding = this.matchLocator.getDOMASTMethodBinding(this.pattern);
-					checkedFocus = true;
-				}
-				if (focusMethodBinding != null) {// textual comparison insufficient
-					ITypeBinding[] parameters = focusMethodBinding.getParameterTypes();
-					if (parameters.length >= parameterCount) {
-						// TODO
-//						newLevel = (isBinary ? argType.getErasure().isEqualTo((parameters[i].getErasureCompatibleType(null)())) :argType.isEquivalentTo((parameters[i]))) ?
-//								ACCURATE_MATCH : IMPOSSIBLE_MATCH;
-						foundLevel = true;
-					}
-				}
-			} else {
-				// TODO (frederic) use this call to refine accuracy on parameter types
-//				 newLevel = resolveLevelForType(this.pattern.parameterSimpleNames[i], this.pattern.parameterQualifications[i], this.pattern.parametersTypeArguments[i], 0, argType);
-				newLevel = resolveLevelForType(this.pattern.parameterSimpleNames[i], this.pattern.parameterQualifications[i], argType);
-			}
-			if (level > newLevel) {
-				if (newLevel == IMPOSSIBLE_MATCH) {
-					if (skipImpossibleArg) {
-						// Do not consider match as impossible while finding declarations and source level >= 1.5
-					 	// (see  bugs https://bugs.eclipse.org/bugs/show_bug.cgi?id=79990, 96761, 96763)
-						if (!foundLevel) {
-							newLevel = level;
-						}
-					} else if (argType.isTypeVariable()) {
-						newLevel = level;
-						foundTypeVariable = true;
-					} else {
-						return IMPOSSIBLE_MATCH;
-					}
-				}
-				level = newLevel; // can only be downgraded
-			}
-		}
-		if (foundTypeVariable) {
-			if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isPrivate(method.getModifiers())) {
-				// https://bugs.eclipse.org/bugs/show_bug.cgi?id=123836, No point in textually comparing type variables, captures etc with concrete types.
-				if (!checkedFocus)
-					focusMethodBinding = this.matchLocator.getDOMASTMethodBinding(this.pattern);
-				if (focusMethodBinding != null
-					/* && matchOverriddenMethod(focusMethodBinding.getDeclaringClass(), focusMethodBinding, method)*/
-					 && (focusMethodBinding.overrides(method) || method.overrides(focusMethodBinding))) {
-					return ACCURATE_MATCH;
-				}
-			}
-			return IMPOSSIBLE_MATCH;
-		}
-	}
-	return level;
-}
-
 // This works for only methods of parameterized types.
 private boolean matchOverriddenMethod(ReferenceBinding type, MethodBinding method, MethodBinding matchMethod) {
 	if (type == null || this.pattern.selector == null) return false;
@@ -663,7 +462,6 @@ private boolean matchOverriddenMethod(ReferenceBinding type, MethodBinding metho
 	}
 	return false;
 }
-
 @Override
 protected void matchReportReference(ASTNode reference, IJavaElement element, Binding elementBinding, int accuracy, MatchLocator locator) throws CoreException {
 	matchReportReference(reference, element, null, null, elementBinding, accuracy, locator);
@@ -864,7 +662,6 @@ public SearchMatch newDeclarationMatch(ASTNode reference, IJavaElement element, 
 protected int referenceType() {
 	return IJavaElement.METHOD;
 }
-
 protected void reportDeclaration(MethodBinding methodBinding, MatchLocator locator, SimpleSet knownMethods) throws CoreException {
 	ReferenceBinding declaringClass = methodBinding.declaringClass;
 	IType type = locator.lookupType(declaringClass);
@@ -997,34 +794,6 @@ public int resolveLevel(Binding binding) {
 		? resolveLevelAsSubtype(this.pattern.declaringSimpleName, this.pattern.declaringQualification, method.declaringClass, method.selector, null, method.declaringClass.qualifiedPackageName(), method.isDefault())
 		: resolveLevelForType(this.pattern.declaringSimpleName, this.pattern.declaringQualification, method.declaringClass);
 	return (methodLevel & MATCH_LEVEL_MASK) > (declaringLevel & MATCH_LEVEL_MASK) ? declaringLevel : methodLevel; // return the weaker match
-}
-@Override
-public int resolveLevel(org.eclipse.jdt.core.dom.ASTNode node, IBinding binding, MatchLocator locator) {
-	if (binding instanceof IMethodBinding method) {
-		boolean skipVerif = this.pattern.findDeclarations && this.mayBeGeneric;
-		int methodLevel = matchMethod(method, skipVerif);
-		if (methodLevel == IMPOSSIBLE_MATCH) {
-			if (method != method.getMethodDeclaration()) methodLevel = matchMethod(method.getMethodDeclaration(), skipVerif);
-			if (methodLevel == IMPOSSIBLE_MATCH) {
-				return IMPOSSIBLE_MATCH;
-			} else {
-				method = method.getMethodDeclaration();
-			}
-		}
-
-		// declaring type
-		if (this.pattern.declaringSimpleName == null && this.pattern.declaringQualification == null) return methodLevel; // since any declaring class will do
-
-		boolean subType = ((method.getModifiers() & Modifier.STATIC) == 0) && ((method.getModifiers() & Modifier.PRIVATE) == 0);
-		if (subType && this.pattern.declaringQualification != null && method.getDeclaringClass() != null && method.getDeclaringClass().getPackage() != null) {
-			subType = CharOperation.compareWith(this.pattern.declaringQualification, method.getDeclaringClass().getPackage().getName().toCharArray()) == 0;
-		}
-		int declaringLevel = subType
-			? resolveLevelAsSubtype(this.pattern.declaringSimpleName, this.pattern.declaringQualification, method.getDeclaringClass(), method.getName(), null, method.getDeclaringClass().getPackage().getName(), (method.getModifiers() & Modifier.DEFAULT) != 0)
-			: resolveLevelForType(this.pattern.declaringSimpleName, this.pattern.declaringQualification, method.getDeclaringClass());
-		return (methodLevel & MATCH_LEVEL_MASK) > (declaringLevel & MATCH_LEVEL_MASK) ? declaringLevel : methodLevel; // return the weaker match
-	}
-	 return INACCURATE_MATCH;
 }
 protected int resolveLevel(MessageSend messageSend) {
 	MethodBinding method = messageSend.binding;
@@ -1167,57 +936,6 @@ protected int resolveLevelAsSubtype(char[] simplePattern, char[] qualifiedPatter
 		level = resolveLevelAsSubtype(simplePattern, qualifiedPattern, ref, methodName, null, packageName, isDefault);
 		if (level != IMPOSSIBLE_MATCH) {
 			if (!type.isAbstract() && !type.isInterface()) { // if concrete class, then method is overridden
-				level |= OVERRIDDEN_METHOD_FLAVOR;
-			}
-			return level | SUB_INVOCATION_FLAVOR; // add flavor to returned level
-		}
-	}
-	return IMPOSSIBLE_MATCH;
-}
-protected int resolveLevelAsSubtype(char[] simplePattern, char[] qualifiedPattern, ITypeBinding type, String methodName, ITypeBinding[] argumentTypes, String packageName, boolean isDefault) {
-	if (type == null) return INACCURATE_MATCH;
-
-	int level = resolveLevelForType(simplePattern, qualifiedPattern, type);
-	if (level != IMPOSSIBLE_MATCH) {
-		if (isDefault && !Objects.equals(packageName, type.getPackage().getName())) {
-			return IMPOSSIBLE_MATCH;
-		}
-		IMethodBinding method = argumentTypes == null ? null : getDOMASTMethodBinding(type, methodName, argumentTypes);
-		if (((method != null && !Modifier.isAbstract(method.getModifiers()) || !Modifier.isAbstract(type.getModifiers()))) && !type.isInterface()) { // if concrete, then method is overridden
-			level |= OVERRIDDEN_METHOD_FLAVOR;
-		}
-		return level;
-	}
-
-	// matches superclass
-	if (!type.isInterface() && !type.getQualifiedName().equals(Object.class.getName())) {
-		level = resolveLevelAsSubtype(simplePattern, qualifiedPattern, type.getSuperclass(), methodName, argumentTypes, packageName, isDefault);
-		if (level != IMPOSSIBLE_MATCH) {
-			if (argumentTypes != null) {
-				// need to verify if method may be overridden
-				IMethodBinding method = getDOMASTMethodBinding(type, methodName, argumentTypes);
-				if (method != null) { // one method match in hierarchy
-					if ((level & OVERRIDDEN_METHOD_FLAVOR) != 0) {
-						// this method is already overridden on a super class, current match is impossible
-						return IMPOSSIBLE_MATCH;
-					}
-					if (!Modifier.isAbstract(method.getModifiers()) && !type.isInterface()) {
-						// store the fact that the method is overridden
-						level |= OVERRIDDEN_METHOD_FLAVOR;
-					}
-				}
-			}
-			return level | SUB_INVOCATION_FLAVOR; // add flavor to returned level
-		}
-	}
-
-	// matches interfaces
-	ITypeBinding[] interfaces = type.getInterfaces();
-	if (interfaces == null) return INACCURATE_MATCH;
-	for (ITypeBinding ref : interfaces) {
-		level = resolveLevelAsSubtype(simplePattern, qualifiedPattern, ref, methodName, null, packageName, isDefault);
-		if (level != IMPOSSIBLE_MATCH) {
-			if (!Modifier.isAbstract(type.getModifiers()) && !type.isInterface()) { // if concrete class, then method is overridden
 				level |= OVERRIDDEN_METHOD_FLAVOR;
 			}
 			return level | SUB_INVOCATION_FLAVOR; // add flavor to returned level
