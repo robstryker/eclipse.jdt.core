@@ -297,21 +297,28 @@ public class DOMTypeReferenceLocator extends DOMPatternLocator {
 					return TYPE_PARAMS_NO_MATCH;
 				}
 				for( int j = 0; j < thisLevelTypeParams.length; j++ ) {
-					String typeFromPattern = new String(thisLevelTypeParams[j]);
-					IBinding patternTypeBinding = JdtCoreDomPackagePrivateUtility.findBindingForType(node, typeFromPattern);
-					IBinding b = DOMASTNodeUtils.getBinding((ASTNode)typeArgs.get(j));
-					String sig = b == null ? null : b instanceof JavacTypeBinding jctb ? jctb.getGenericTypeSignature(false) : b.getKey();
-					if( sig.startsWith("+") && b instanceof ITypeBinding tb) {
-						boolean canContinue = validateOneTypeParameterExtends(typeFromPattern, sig, tb, patternTypeBinding);
+					String patternSignature = new String(thisLevelTypeParams[j]);
+					IBinding patternBinding = JdtCoreDomPackagePrivateUtility.findBindingForType(node, patternSignature);
+					IBinding nodeBinding = DOMASTNodeUtils.getBinding((ASTNode)typeArgs.get(j));
+					String nodeSignature = nodeBinding == null ? null : nodeBinding instanceof JavacTypeBinding jctb ? jctb.getGenericTypeSignature(false) : nodeBinding.getKey();
+					if( nodeSignature.equals(patternSignature)) {
+						continue;
+					} else if( nodeSignature.startsWith("+") && nodeBinding instanceof ITypeBinding nodeTypeBinding) {
+						boolean canContinue = validateOneTypeParameterExtends(nodeSignature, nodeTypeBinding, patternSignature, patternBinding);
 						if( !canContinue) {
 							return TYPE_PARAMS_COUNT_MATCH;
 						}
-					} else if( sig.startsWith("-") && b instanceof ITypeBinding tb) { 
-						boolean canContinue = validateOneTypeParameterSuper(typeFromPattern, sig, tb, patternTypeBinding);
+					} else if( patternSignature.startsWith("+") && nodeBinding instanceof ITypeBinding nodeTypeBinding && patternBinding instanceof ITypeBinding patternTypeBinding) {
+						boolean canContinue = validateOneTypeParameterExtends(patternSignature,  patternTypeBinding, nodeSignature, nodeTypeBinding);
 						if( !canContinue) {
 							return TYPE_PARAMS_COUNT_MATCH;
 						}
-					} else if( !typeFromPattern.equals(sig)) {
+					} else if( nodeSignature.startsWith("-") && nodeBinding instanceof ITypeBinding tb) { 
+						boolean canContinue = validateOneTypeParameterSuper(patternSignature, nodeSignature, tb, patternBinding);
+						if( !canContinue) {
+							return TYPE_PARAMS_COUNT_MATCH;
+						}
+					} else if( !patternSignature.equals(nodeSignature)) {
 						return TYPE_PARAMS_COUNT_MATCH;
 					}
 				}
@@ -333,21 +340,21 @@ public class DOMTypeReferenceLocator extends DOMPatternLocator {
 		return TYPE_PARAMS_MATCH;
 	}
 	
-	private boolean validateOneTypeParameterExtends(String typeFromPattern, String sig, ITypeBinding tb, IBinding patternTypeBinding) {
-		boolean isQuestionMark = "+Ljava/lang/Object;".equals(sig);
+	private boolean validateOneTypeParameterExtends(String extendableSig, ITypeBinding extendableBinding, String otherSig, IBinding otherBinding) {
+		boolean isQuestionMark = "+Ljava/lang/Object;".equals(extendableSig);
 		if( isQuestionMark ) {
 			// TODO - if pattern is <Unresolved1,Unresolved2> we must return no_match
 			return true;
 		}
-		String remaining = sig.substring(1);
-		ITypeBinding[] bounds = tb.getTypeBounds();
+		String remaining = extendableSig.substring(1);
+		ITypeBinding[] bounds = extendableBinding.getTypeBounds();
 		if( bounds != null && bounds.length == 1 && bounds[0] != null ) {
 			ITypeBinding b1 = bounds[0];
 			String boundSig = b1 == null ? null : b1 instanceof JavacTypeBinding jctb ? jctb.getGenericTypeSignature(false) : b1.getKey();
-			if( typeFromPattern.equals(boundSig)) {
+			if( otherSig.equals(boundSig)) {
 				return true;
 			}
-			if( patternTypeBinding instanceof ITypeBinding itb) {
+			if( otherBinding instanceof ITypeBinding itb) {
 				ITypeBinding working = itb;
 				while(working != null) {
 					ITypeBinding superClaz = working.getSuperclass();
