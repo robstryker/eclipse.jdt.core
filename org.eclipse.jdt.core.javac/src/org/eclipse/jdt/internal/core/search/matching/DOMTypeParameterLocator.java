@@ -99,10 +99,11 @@ public class DOMTypeParameterLocator extends DOMPatternLocator {
 			if (this.locator.matchesName(methBinding.getDeclaringClass().getName().toCharArray(), this.locator.pattern.methodDeclaringClassName) &&
 				(methBinding.isConstructor() || this.locator.matchesName(methBinding.getName().toCharArray(), this.locator.pattern.declaringMemberName))) {
 				int length = this.locator.pattern.methodArgumentTypes==null ? 0 : this.locator.pattern.methodArgumentTypes.length;
-				if (methBinding.getParameterTypes() == null) {
+				ITypeBinding[] pTypes = methBinding.getParameterTypes();
+				if (pTypes == null) {
 					if (length == 0) return ACCURATE_MATCH;
-				} else if (methBinding.getParameterTypes().length == length){
-					ITypeBinding[] p = methBinding.getParameterTypes();
+				} else if (pTypes.length == length){
+					ITypeBinding[] p = pTypes;
 					for (int i=0; i<length; i++) {
 						if (!this.locator.matchesName(this.locator.pattern.methodArgumentTypes[i], p[i].getName().toCharArray())) {
 							return IMPOSSIBLE_MATCH;
