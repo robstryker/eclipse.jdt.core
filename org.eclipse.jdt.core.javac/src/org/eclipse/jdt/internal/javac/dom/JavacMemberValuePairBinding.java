@@ -110,7 +110,7 @@ public abstract class JavacMemberValuePairBinding implements IMemberValuePairBin
 
 	@Override
 	public boolean isDefault() {
-		return this.value == this.method.methodSymbol.defaultValue;
+		return this.value == this.method.methodSymbol.defaultValue && this.value != null;
 	}
 
 	@Override
