@@ -149,19 +149,13 @@ public class DOMPatternLocator extends PatternLocator {
 		}
 		ITypeBinding type = binding.isArray() ? binding.getComponentType() : binding;
 		String simpleName = type instanceof JavacTypeBinding ? ((JavacTypeBinding)type).getName(false) : binding.getName();
-		String qualifier = qualifiedSourceName(type.getDeclaringClass());
-		if( qualifier == null && type instanceof JavacTypeBinding jctb) {
-			String qualifiedName = jctb.getQualifiedName(false);
-			if( qualifiedName != null ) {
-				return qualifiedName;
-			}
-		}
 		if (type.isLocal()) {
-			return qualifier + ".1." + simpleName; //$NON-NLS-1$
+			return qualifiedSourceName(type.getDeclaringClass()) + ".1." + simpleName; //$NON-NLS-1$
 		} else if (type.isMember()) {
-			return qualifier + '.' + simpleName;
+			return qualifiedSourceName(type.getDeclaringClass()) + '.' + simpleName;
+		} else {
+			return simpleName;
 		}
-		return binding.getName();
 	}
 	protected int resolveLevelForType(char[] simpleNamePattern, char[] qualificationPattern, ITypeBinding binding) {
 		if( binding == null && simpleNamePattern == null && qualificationPattern == null )
@@ -212,7 +206,7 @@ public class DOMPatternLocator extends PatternLocator {
 		}
 		if (sourceName == null)
 			return IMPOSSIBLE_MATCH;
-		return resolveLevelForTypeSourceName(qualifiedPattern, sourceName, type);
+		return resolveLevelForTypeSourceName(qualifiedPattern, type.getQualifiedName().toCharArray(), type);
 	}
 	public static String qualifiedSourceName(ITypeBinding binding) {
 		if (binding == null) {
