@@ -592,16 +592,15 @@ public class DOMMethodLocator extends DOMPatternLocator {
 		if (binding instanceof IMethodBinding method) {
 			boolean skipVerif = this.locator.pattern.findDeclarations && this.locator.mayBeGeneric;
 			int methodLevel = matchMethod(node, method, skipVerif, false);
-			if (methodLevel == IMPOSSIBLE_MATCH) {
+			if (!(isExactPattern || isEquivPattern) && methodLevel == IMPOSSIBLE_MATCH) {
 				IMethodBinding decl = method.getMethodDeclaration();
 				if (method != decl) {
 					methodLevel = matchMethod(node, decl, skipVerif, true);
-				}
-				if (methodLevel == IMPOSSIBLE_MATCH) {
-					return toResponse(IMPOSSIBLE_MATCH);
-				} else {
 					method = decl;
 				}
+			}
+			if (methodLevel == IMPOSSIBLE_MATCH) {
+				return toResponse(IMPOSSIBLE_MATCH);
 			}
 
 			if( node instanceof Name) {
@@ -623,7 +622,7 @@ public class DOMMethodLocator extends DOMPatternLocator {
 			}
 			ITypeBinding declaring = method.getDeclaringClass();
 			int declaringLevel = subType
-				? resolveLevelAsSubtype(this.locator.pattern.declaringSimpleName, this.locator.pattern.declaringQualification, declaring, method.getName(), null, declaring.getPackage().getName(), (method.getModifiers() & Modifier.DEFAULT) != 0)
+				? this.resolveLevelAsSubtype(this.locator.pattern.declaringSimpleName, this.locator.pattern.declaringQualification, declaring, method.getName(), null, declaring.getPackage().getName(), (method.getModifiers() & Modifier.DEFAULT) != 0)
 				: this.resolveLevelForType(this.locator.pattern.declaringSimpleName, this.locator.pattern.declaringQualification, declaring);
 			int weakerLevel = findWeakerLevel((methodLevel & PatternLocator.MATCH_LEVEL_MASK), (declaringLevel & PatternLocator.MATCH_LEVEL_MASK));
 			int matchLevel = (weakerLevel & PatternLocator.MATCH_LEVEL_MASK);
