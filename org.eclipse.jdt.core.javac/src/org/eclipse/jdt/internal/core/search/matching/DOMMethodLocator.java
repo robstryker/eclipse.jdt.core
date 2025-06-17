@@ -666,8 +666,11 @@ public class DOMMethodLocator extends DOMPatternLocator {
 
 		int methodLevel = matchMethod(messageSend, method, false, false);
 		if (methodLevel == IMPOSSIBLE_MATCH) {
-			if (method != method.getMethodDeclaration()) methodLevel = matchMethod(messageSend, method.getMethodDeclaration(), false, false);
-			if (methodLevel == IMPOSSIBLE_MATCH) return IMPOSSIBLE_MATCH;
+			IMethodBinding md = method.getMethodDeclaration();
+			if (method != md)
+				methodLevel = matchMethod(messageSend, md, false, true);
+			if (methodLevel == IMPOSSIBLE_MATCH)
+				return IMPOSSIBLE_MATCH;
 			method = method.getMethodDeclaration();
 		}
 

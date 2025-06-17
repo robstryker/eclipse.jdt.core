@@ -994,7 +994,8 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			// generic binding
 			return this.resolver.bindings.getTypeBinding(this.typeSymbol.type, true);
 		}
-		return this.resolver.bindings.getTypeBinding(this.types.erasureRecursive(this.type));
+		Type t1 = this.types.erasureRecursive(this.type);
+		return this.resolver.bindings.getTypeBinding(t1);
 	}
 
 	@Override

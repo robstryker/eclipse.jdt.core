@@ -158,10 +158,12 @@ public class DOMPatternLocator extends PatternLocator {
 		return binding.getName();
 	}
 	protected int resolveLevelForType(char[] simpleNamePattern, char[] qualificationPattern, ITypeBinding binding) {
-		return
-			binding == null && simpleNamePattern == null && qualificationPattern == null ? ACCURATE_MATCH :
-			binding != null && binding.isArray() && new String(simpleNamePattern).endsWith("[]") ? resolveLevelForType(Arrays.copyOf(simpleNamePattern, simpleNamePattern.length - 2), qualificationPattern, binding.getComponentType()) :
-			resolveLevelForTypeFQN(simpleNamePattern, qualificationPattern, binding, null);
+		if( binding == null && simpleNamePattern == null && qualificationPattern == null)
+			return ACCURATE_MATCH;
+		if( binding != null && binding.isArray() && new String(simpleNamePattern).endsWith("[]")) {
+			return resolveLevelForType(Arrays.copyOf(simpleNamePattern, simpleNamePattern.length - 2), qualificationPattern, binding.getComponentType());
+		}
+		return resolveLevelForTypeFQN(simpleNamePattern, qualificationPattern, binding, null);
 	}
 
 	protected int resolveLevelForTypeFQN(char[] simpleNamePattern, char[] qualificationPattern, ITypeBinding binding, IImportDiscovery discovery) {
