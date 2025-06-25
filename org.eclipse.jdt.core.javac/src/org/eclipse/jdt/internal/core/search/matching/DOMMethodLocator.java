@@ -760,6 +760,9 @@ public class DOMMethodLocator extends DOMPatternLocator {
 			retval = declaringLevel;
 		}
 
+		if( isPatternExactMatch() && invocationLevel == IMPOSSIBLE_MATCH && declarationLevel == ACCURATE_MATCH ) {
+			return IMPOSSIBLE_MATCH;
+		}
 		return retval;
 	}
 
