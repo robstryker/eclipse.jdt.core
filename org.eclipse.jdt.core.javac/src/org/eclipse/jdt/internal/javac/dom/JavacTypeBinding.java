@@ -1009,11 +1009,16 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 			ArrayType arrayType = this.types.makeArrayType(component.type);
 			return this.resolver.bindings.getTypeBinding(arrayType, false);
 		}
-		if (isParameterizedType()) {
+
+		boolean isParamType = isParameterizedType();
+		boolean typeSymbolIsParameterized = this.typeSymbol.type.isParameterized();
+		boolean isRawParameterized = isRawType() && typeSymbolIsParameterized;
+		boolean isTypeVar = this.type.getKind() == TypeKind.TYPEVAR;
+		if (isParamType || isTypeVar) {
 			// generic binding
 			return this.resolver.bindings.getTypeBinding(this.type, true);
 		}
-		if (isRawType() && this.typeSymbol.type.isParameterized()) {
+		if (isRawParameterized) {
 			// generic binding
 			return this.resolver.bindings.getTypeBinding(this.typeSymbol.type, true);
 		}
