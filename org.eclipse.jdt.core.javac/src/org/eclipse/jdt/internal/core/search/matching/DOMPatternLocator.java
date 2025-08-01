@@ -171,12 +171,13 @@ public class DOMPatternLocator extends PatternLocator {
 	}
 
 	protected int resolveLevelForTypeFQN(char[] simpleNamePattern, char[] qualificationPattern, ITypeBinding binding, IImportDiscovery discovery) {
-		int level = 0;
+		int level = IMPOSSIBLE_MATCH;
 		if (simpleNamePattern == null) {
 			return ACCURATE_MATCH;
 		}
 		if (qualificationPattern == null && simpleNamePattern != null) {
-			level = resolveLevelForTypeSourceName(simpleNamePattern, (binding.isArray() ? binding : binding.getErasure()).getName().toCharArray(), binding);
+			ITypeBinding bindingToUse = (binding.isArray() || binding.isTypeVariable() ? binding : binding.getErasure());
+			level = resolveLevelForTypeSourceName(simpleNamePattern, bindingToUse.getName().toCharArray(), binding);
 		}
 		if (level == ACCURATE_MATCH || level == ERASURE_MATCH) {
 			return level;
