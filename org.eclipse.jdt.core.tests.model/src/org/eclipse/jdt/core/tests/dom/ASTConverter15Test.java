@@ -2216,6 +2216,7 @@ public class ASTConverter15Test extends ConverterTestSetup {
 		SimpleName simpleName2 = (SimpleName) name;
 		typeBinding = simpleName2.resolveTypeBinding();
 		assertNotNull("No binding", typeBinding);
+		String k = typeBinding.getKey();
         assertEquals("Wrong name 3", "test0070.Outer", typeBinding.getQualifiedName());
 	}
 

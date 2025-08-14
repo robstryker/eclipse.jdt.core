@@ -643,7 +643,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	public ITypeBinding resolveType(Type type) {
-		if (type.getParent() instanceof ParameterizedType parameterized
+		return resolveType(type, true);
+	}
+	public ITypeBinding resolveType(Type type, boolean maintainTypeParams) {
+		if (maintainTypeParams && type.getParent() instanceof ParameterizedType parameterized
 			&& type.getLocationInParent() == ParameterizedType.TYPE_PROPERTY) {
 			// use parent type for this as it keeps generics info
 			return resolveType(parameterized);
@@ -1176,7 +1179,7 @@ public class JavacBindingResolver extends BindingResolver {
 		if (name.getLocationInParent() == SimpleType.NAME_PROPERTY
 				|| name.getLocationInParent() == QualifiedType.NAME_PROPERTY
 				|| name.getLocationInParent() == NameQualifiedType.NAME_PROPERTY) { // case of "var"
-			return resolveType((Type)parent);
+			return resolveType((Type)parent, false);
 		}
 		if (name.getLocationInParent() == MethodInvocation.NAME_PROPERTY && name.getParent() instanceof MethodInvocation method) {
 			return resolveMethod(method);
