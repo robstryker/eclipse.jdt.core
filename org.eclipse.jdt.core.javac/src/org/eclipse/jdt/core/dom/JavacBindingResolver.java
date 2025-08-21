@@ -656,7 +656,10 @@ public class JavacBindingResolver extends BindingResolver {
 
 	@Override
 	public ITypeBinding resolveType(Type type) {
-		if (type.getParent() instanceof ParameterizedType parameterized
+		return resolveType(type, true);
+	}
+	public ITypeBinding resolveType(Type type, boolean maintainParentParameters) {
+		if (maintainParentParameters && type.getParent() instanceof ParameterizedType parameterized
 			&& type.getLocationInParent() == ParameterizedType.TYPE_PROPERTY) {
 			// use parent type for this as it keeps generics info
 			return resolveType(parameterized);
@@ -1191,12 +1194,18 @@ public class JavacBindingResolver extends BindingResolver {
 		if ((name.getLocationInParent() == SimpleType.NAME_PROPERTY
 				|| name.getLocationInParent() == QualifiedType.NAME_PROPERTY
 				|| name.getLocationInParent() == NameQualifiedType.NAME_PROPERTY)
-			&& name.getParent() instanceof Type type) { // case of "var"
+				&& name.getParent() instanceof Type type) { // case of "var"
 			var typeBinding = resolveType(type);
 			boolean complexTypeChain = type.getLocationInParent() == ParameterizedType.TYPE_PROPERTY &&
 					type.getParent() instanceof ParameterizedType parameterized &&
 					parameterized.getParent() instanceof Type;
-			return complexTypeChain ? typeBinding.getErasure() : typeBinding;
+			if( complexTypeChain ) {
+				return typeBinding.getErasure();
+			}
+			boolean nameIsSimple = name.getLocationInParent() == SimpleType.NAME_PROPERTY;
+			IBinding s1 = resolveType((Type)parent, !nameIsSimple);
+			IBinding s2 = resolveType((Type)parent, true);
+			return s2; //resolveType((Type)parent, !nameIsSimple);
 		}
 		if (name.getLocationInParent() == MethodInvocation.NAME_PROPERTY && name.getParent() instanceof MethodInvocation method) {
 			return resolveMethod(method);
