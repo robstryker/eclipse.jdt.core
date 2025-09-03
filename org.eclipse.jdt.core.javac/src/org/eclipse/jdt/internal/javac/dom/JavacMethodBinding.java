@@ -693,7 +693,10 @@ public abstract class JavacMethodBinding implements IMethodBinding {
 
 		boolean finalRet = false;
 		if( this.methodSymbol != null && (this.resolvedTypeArgs == null || this.resolvedTypeArgs.size() == 0)) {
-			finalRet = true;
+			// could still be raw or generic
+			if( !parameterizedViaSymbolTypeParams()) {
+				finalRet = true;
+			}
 		} else {
 			ITypeBinding declaring = getDeclaringClass();
 			boolean old1 = (declaring != null && declaring.isRawType() &&
