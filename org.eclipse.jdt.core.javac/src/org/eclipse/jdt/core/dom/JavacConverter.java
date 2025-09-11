@@ -2489,6 +2489,9 @@ class JavacConverter {
 							} else if (body instanceof JCBlock stmt) {
 								stmts.add(stmt);
 							}
+							if (body instanceof JCBlock block) {
+								stmts.add(block);
+							}
 						}
 					}
 					return stmts.stream();
