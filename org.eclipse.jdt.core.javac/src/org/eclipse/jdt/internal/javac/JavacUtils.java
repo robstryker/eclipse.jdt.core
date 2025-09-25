@@ -36,8 +36,11 @@ import javax.tools.StandardLocation;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IClasspathAttribute;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -83,6 +86,16 @@ public class JavacUtils {
 				ILog.get().error(ex.getMessage(), ex);
 			}
 		}
+		boolean hasBuildState = javaProject.hasBuildState();
+		if( !hasBuildState ) {
+			try {
+				javaProject.getProject().build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+			} catch(CoreException ce) {
+				// TODO
+			}
+		}
+
+
 		var addExports = Arrays.stream(classpath) //
 				.filter(entry -> entry.getEntryKind() == IClasspathEntry.CPE_CONTAINER) //
 				.map(IClasspathEntry::getExtraAttributes)
